@@ -980,36 +980,98 @@ class MIAWMCPServer {
       }
     });
 
-    // POST/DELETE for JSON-RPC messages (if needed by some clients)
+    // POST for stateless HTTP JSON-RPC (what Cursor actually uses!)
     app.post('/mcp', async (req, res) => {
-      console.error(`MCP POST request from ${req.ip || 'unknown'}`);
+      console.error(`MCP POST (JSON-RPC) request from ${req.ip || 'unknown'}`);
       console.error(`User-Agent: ${req.headers['user-agent'] || 'unknown'}`);
-      console.error(`Body:`, JSON.stringify(req.body).substring(0, 200));
+      console.error(`Method: ${req.body?.method}, ID: ${req.body?.id}`);
       
-      // For POST, try to establish SSE like GET
       try {
-        const serverInstance = this.createServerInstance();
-        const transport = new SSEServerTransport('/mcp', res);
+        const jsonrpcRequest = req.body;
         
-        console.error('Connecting MCP server instance via POST...');
-        await serverInstance.connect(transport);
-        console.error('MCP server instance connected successfully via POST');
-        
-        req.on('close', () => {
-          console.error('MCP POST connection closed');
-        });
-      } catch (error) {
-        console.error('Error with POST connection:', error);
-        if (!res.headersSent) {
-          res.status(500).json({
+        // Validate JSON-RPC request
+        if (!jsonrpcRequest || jsonrpcRequest.jsonrpc !== '2.0') {
+          return res.status(400).json({
             jsonrpc: '2.0',
             error: {
-              code: -32603,
-              message: 'Failed to establish connection',
-              data: error instanceof Error ? error.message : String(error)
-            }
+              code: -32600,
+              message: 'Invalid Request: Not a valid JSON-RPC 2.0 request'
+            },
+            id: null
           });
         }
+
+        // Create a new MIAWClient for this request (stateless)
+        const client = new MIAWClient({
+          scrtUrl: process.env.MIAW_SCRT_URL!,
+          orgId: process.env.MIAW_ORG_ID!,
+          esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
+        });
+
+        // Handle different JSON-RPC methods
+        let result: any;
+        
+        switch (jsonrpcRequest.method) {
+          case 'initialize':
+            result = {
+              protocolVersion: '2024-11-05',
+              capabilities: {
+                tools: {}
+              },
+              serverInfo: {
+                name: 'miaw-mcp-server',
+                version: '1.0.0'
+              }
+            };
+            break;
+
+          case 'tools/list':
+            result = {
+              tools: this.getTools()
+            };
+            break;
+
+          case 'tools/call':
+            const toolName = jsonrpcRequest.params?.name;
+            const toolArgs = jsonrpcRequest.params?.arguments || {};
+            
+            if (!toolName) {
+              throw new Error('Tool name is required');
+            }
+
+            const toolResult = await this.handleToolCall(client, toolName, toolArgs);
+            result = toolResult;
+            break;
+
+          default:
+            return res.status(200).json({
+              jsonrpc: '2.0',
+              error: {
+                code: -32601,
+                message: `Method not found: ${jsonrpcRequest.method}`
+              },
+              id: jsonrpcRequest.id
+            });
+        }
+
+        // Send successful response
+        res.status(200).json({
+          jsonrpc: '2.0',
+          result: result,
+          id: jsonrpcRequest.id
+        });
+
+      } catch (error) {
+        console.error('Error handling JSON-RPC request:', error);
+        res.status(200).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: 'Internal error',
+            data: error instanceof Error ? error.message : String(error)
+          },
+          id: req.body?.id || null
+        });
       }
     });
 
