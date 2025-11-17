@@ -1,0 +1,14 @@
+# Files to ignore during Heroku slug compilation
+*.md
+!README.md
+.git
+.gitignore
+.vscode
+.idea
+*.log
+test/
+tests/
+spec/
+docs/
+examples/
+

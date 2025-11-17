@@ -1,0 +1,58 @@
+{
+  "name": "MIAW MCP Server",
+  "description": "MCP Server for Salesforce Enhanced Chat (MIAW) API - enables AI agents to interact with Salesforce messaging",
+  "repository": "https://github.com/your-repo/miaw-mcp-server",
+  "logo": "https://cdn.worldvectorlogo.com/logos/salesforce-2.svg",
+  "keywords": [
+    "mcp",
+    "salesforce",
+    "miaw",
+    "enhanced-chat",
+    "messaging",
+    "ai-agent",
+    "chatgpt",
+    "claude"
+  ],
+  "stack": "heroku-22",
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "env": {
+    "MIAW_SCRT_URL": {
+      "description": "Your Salesforce SCRT URL (without https://). Example: mycompany.salesforce-scrt.com",
+      "required": true
+    },
+    "MIAW_ORG_ID": {
+      "description": "Your Salesforce Organization ID (15 characters). Find in Setup > Company Information",
+      "required": true
+    },
+    "MIAW_ES_DEVELOPER_NAME": {
+      "description": "Enhanced Chat Deployment Developer Name (API Name). Find in Setup > Embedded Service Deployments",
+      "required": true
+    },
+    "MIAW_CAPABILITIES_VERSION": {
+      "description": "Capabilities version",
+      "value": "1",
+      "required": false
+    },
+    "MIAW_PLATFORM": {
+      "description": "Platform identifier",
+      "value": "Web",
+      "required": false
+    },
+    "MCP_TRANSPORT": {
+      "description": "Transport mode (http or stdio)",
+      "value": "http",
+      "required": false
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  }
+}
+
