@@ -22,6 +22,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import express from 'express';
 import dotenv from 'dotenv';
 import * as types from './types.js';
+import { MIAW_TOOLS } from './tool-definitions.js';
 
 // Load environment variables
 dotenv.config();
@@ -387,10 +388,15 @@ class MIAWMCPServer {
   /**
    * Define all available MCP tools
    */
-  private getTools(): Tool[] {
-    return [
+  private getTools(): any[] {
+    // Use the properly formatted tool definitions for ChatGPT compatibility
+    return MIAW_TOOLS;
+    
+    // Original 17 tools (keeping for reference, but using simplified 6-tool set above)
+    /* return [
       {
         name: 'generate_guest_access_token',
+        title: 'Generate Guest Access Token',
         description: 'Generate an access token for an unauthenticated (guest) user. This is the first step to start a messaging session. The access token is automatically saved for subsequent requests.',
         inputSchema: {
           type: 'object',
@@ -412,8 +418,33 @@ class MIAWMCPServer {
               description: 'Optional CAPTCHA token if required by the deployment'
             }
           },
-          required: ['deviceId']
-        }
+          required: ['deviceId'],
+          additionalProperties: false
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            accessToken: {
+              type: 'string',
+              description: 'The generated access token'
+            },
+            tokenType: {
+              type: 'string',
+              description: 'Type of token (Bearer)'
+            },
+            expiresIn: {
+              type: 'number',
+              description: 'Token expiration time in seconds'
+            }
+          },
+          required: ['accessToken']
+        },
+        annotations: {
+          readOnlyHint: false,
+          destructiveHint: false,
+          openWorldHint: false
+        },
+        _meta: {}
       },
       {
         name: 'generate_authenticated_access_token',
@@ -672,7 +703,7 @@ class MIAWMCPServer {
           properties: {}
         }
       }
-    ];
+    ]; */
   }
 
   /**
