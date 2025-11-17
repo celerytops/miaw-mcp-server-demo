@@ -901,76 +901,100 @@ class MIAWMCPServer {
       });
     });
 
-    // MCP endpoint - supports GET, POST, DELETE (ChatGPT compatible)
-    const handleMcpConnection = async (req: any, res: any) => {
-      const method = req.method;
-      const accept = req.headers.accept || '';
-      
-      console.error(`MCP ${method} request from ${req.ip || 'unknown'}`);
-      console.error(`Accept header: ${accept}`);
+    // Store active MCP sessions
+    const sessions = new Map<string, Server>();
+
+    // MCP endpoint - GET establishes SSE connection
+    app.get('/mcp', async (req, res) => {
+      console.error(`MCP GET (SSE) request from ${req.ip || 'unknown'}`);
       console.error(`User-Agent: ${req.headers['user-agent'] || 'unknown'}`);
       
       try {
-        // For HEAD requests, just return 200
-        if (method === 'HEAD') {
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-          res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
-          return res.status(200).end();
-        }
-
-        // For OPTIONS requests (CORS preflight)
-        if (method === 'OPTIONS') {
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-          res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
-          res.setHeader('Access-Control-Max-Age', '86400');
-          return res.status(204).end();
-        }
-
-        // Set CORS headers for all responses
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization');
-
-        // Create a new server instance for this connection
+        // Generate session ID
+        const sessionId = Math.random().toString(36).substring(7);
+        
+        // Create a new server instance for this session
         const serverInstance = this.createServerInstance();
-        const transport = new SSEServerTransport('/mcp', res);
+        sessions.set(sessionId, serverInstance);
         
-        console.error('Connecting MCP server instance...');
+        // Create SSE transport with message endpoint
+        const transport = new SSEServerTransport(`/mcp`, res);
+        
+        console.error(`Session ${sessionId}: Connecting MCP server instance...`);
         await serverInstance.connect(transport);
-        console.error('MCP server instance connected successfully');
+        console.error(`Session ${sessionId}: MCP server connected successfully`);
         
-        // Handle connection close
+        // Clean up on close
         req.on('close', () => {
-          console.error('MCP connection closed by client');
+          console.error(`Session ${sessionId}: Connection closed by client`);
+          sessions.delete(sessionId);
         });
 
         req.on('error', (err: any) => {
-          console.error('MCP connection error:', err);
+          console.error(`Session ${sessionId}: Connection error:`, err);
+          sessions.delete(sessionId);
         });
       } catch (error) {
-        console.error('Error establishing MCP connection:', error);
+        console.error('Error establishing SSE connection:', error);
         if (!res.headersSent) {
           res.status(500).json({ 
             jsonrpc: '2.0',
-            id: 'server-error',
             error: {
               code: -32603,
-              message: 'Internal error: Failed to establish connection',
+              message: 'Internal error: Failed to establish SSE connection',
               data: error instanceof Error ? error.message : String(error)
             }
           });
         }
       }
-    };
+    });
 
-    // Support all HTTP methods for MCP endpoint
-    app.options('/mcp', handleMcpConnection);
-    app.head('/mcp', handleMcpConnection);
-    app.get('/mcp', handleMcpConnection);
-    app.post('/mcp', handleMcpConnection);
-    app.delete('/mcp', handleMcpConnection);
+    // POST/DELETE for JSON-RPC messages (if needed by some clients)
+    app.post('/mcp', async (req, res) => {
+      console.error(`MCP POST request from ${req.ip || 'unknown'}`);
+      console.error(`User-Agent: ${req.headers['user-agent'] || 'unknown'}`);
+      console.error(`Body:`, JSON.stringify(req.body).substring(0, 200));
+      
+      // For POST, try to establish SSE like GET
+      try {
+        const serverInstance = this.createServerInstance();
+        const transport = new SSEServerTransport('/mcp', res);
+        
+        console.error('Connecting MCP server instance via POST...');
+        await serverInstance.connect(transport);
+        console.error('MCP server instance connected successfully via POST');
+        
+        req.on('close', () => {
+          console.error('MCP POST connection closed');
+        });
+      } catch (error) {
+        console.error('Error with POST connection:', error);
+        if (!res.headersSent) {
+          res.status(500).json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32603,
+              message: 'Failed to establish connection',
+              data: error instanceof Error ? error.message : String(error)
+            }
+          });
+        }
+      }
+    });
+
+    // OPTIONS and HEAD for CORS
+    app.options('/mcp', (_req, res) => {
+      res.status(204).end();
+    });
+
+    app.head('/mcp', (_req, res) => {
+      res.status(200).end();
+    });
+
+    app.delete('/mcp', (_req, res) => {
+      console.error('MCP DELETE request - closing session');
+      res.status(200).json({ success: true });
+    });
 
     // Legacy SSE endpoint (kept for backwards compatibility)
     app.get('/sse', async (req, res) => {
