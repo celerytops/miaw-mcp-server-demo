@@ -807,11 +807,74 @@ class MIAWMCPServer {
   }
 
   /**
+   * Create a new MCP Server instance for a connection
+   */
+  private createServerInstance(): Server {
+    const server = new Server(
+      {
+        name: 'miaw-mcp-server',
+        version: '1.0.0',
+      },
+      {
+        capabilities: {
+          tools: {},
+        },
+      }
+    );
+
+    // Setup handlers for this instance
+    server.setRequestHandler(ListToolsRequestSchema, async () => ({
+      tools: this.getTools(),
+    }));
+
+    server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      try {
+        const client = this.initializeClient();
+        return await this.handleToolCall(client, request.params.name, request.params.arguments);
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          const axiosError = error as AxiosError<types.ErrorResponse>;
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  error: true,
+                  message: axiosError.response?.data?.error?.message || axiosError.message,
+                  code: axiosError.response?.data?.error?.code || axiosError.code,
+                  details: axiosError.response?.data?.error?.details
+                }, null, 2)
+              }
+            ]
+          };
+        }
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                error: true,
+                message: error instanceof Error ? error.message : 'Unknown error occurred'
+              }, null, 2)
+            }
+          ]
+        };
+      }
+    });
+
+    return server;
+  }
+
+  /**
    * Start the MCP server in HTTP/SSE mode (hosted)
    */
   async startHttp(port: number = 3000) {
     const app = express();
     
+    // Enable JSON body parsing
+    app.use(express.json());
+
     // Health check endpoint
     app.get('/health', (_req, res) => {
       res.json({ status: 'healthy', service: 'miaw-mcp-server', version: '1.0.0' });
@@ -829,23 +892,27 @@ class MIAWMCPServer {
       });
     });
 
-    // MCP SSE endpoint
+    // MCP SSE endpoint - each connection gets its own server instance
     app.get('/sse', async (req, res) => {
       console.error('New SSE connection established');
       
-      const transport = new SSEServerTransport('/message', res);
-      await this.server.connect(transport);
-      
-      // Keep connection alive
-      req.on('close', () => {
-        console.error('SSE connection closed');
-      });
-    });
-
-    // MCP message endpoint
-    app.post('/message', async (req, res) => {
-      // SSE transport handles this
-      res.status(200).end();
+      try {
+        // Create a new server instance for this connection
+        const serverInstance = this.createServerInstance();
+        const transport = new SSEServerTransport('/message', res);
+        
+        await serverInstance.connect(transport);
+        
+        // Handle connection close
+        req.on('close', () => {
+          console.error('SSE connection closed');
+        });
+      } catch (error) {
+        console.error('Error establishing SSE connection:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Failed to establish SSE connection' });
+        }
+      }
     });
 
     // Start HTTP server
