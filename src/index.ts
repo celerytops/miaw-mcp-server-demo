@@ -302,6 +302,19 @@ class MIAWClient {
 }
 
 /**
+ * Session storage for managing access tokens server-side
+ * This prevents exposing JWTs to ChatGPT (which triggers moderation)
+ */
+const sessions = new Map<string, { accessToken: string; conversationId?: string }>();
+
+/**
+ * Generate a simple session ID
+ */
+function generateSessionId(): string {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}
+
+/**
  * MCP Server Implementation
  */
 class MIAWMCPServer {
@@ -735,10 +748,13 @@ class MIAWMCPServer {
           { appName: args.appName, clientVersion: args.clientVersion },
           args.captchaToken
         );
-        // Return only essential fields to avoid moderation issues with long JWTs
+        // Store token server-side and return sessionId (avoids exposing JWT to ChatGPT)
+        const sessionId = generateSessionId();
+        sessions.set(sessionId, { accessToken: tokenResponse.accessToken });
         result = {
-          accessToken: tokenResponse.accessToken,
-          expiresIn: tokenResponse.expiresIn || 3600
+          sessionId: sessionId,
+          expiresIn: tokenResponse.expiresIn || 3600,
+          message: 'Session created successfully. Use this sessionId for all subsequent calls.'
         };
         break;
 
@@ -752,21 +768,37 @@ class MIAWMCPServer {
         break;
 
       case 'create_conversation':
-        if (args.accessToken) {
-          client.setAccessToken(args.accessToken);
+        if (args.sessionId) {
+          const session = sessions.get(args.sessionId);
+          if (!session) {
+            throw new Error('Invalid sessionId. Please generate a new session first.');
+          }
+          client.setAccessToken(session.accessToken);
         }
-        result = await client.createConversation({
+        const convResult = await client.createConversation({
           routableType: args.routableType,
           routingAttributes: args.routingAttributes,
           capabilities: args.capabilities,
           conversationContextId: args.conversationContextId,
           prechatDetails: args.prechatDetails
         });
+        // Store conversationId in session
+        if (args.sessionId) {
+          const session = sessions.get(args.sessionId);
+          if (session) {
+            session.conversationId = convResult.conversationId;
+          }
+        }
+        result = convResult;
         break;
 
       case 'send_message':
-        if (args.accessToken) {
-          client.setAccessToken(args.accessToken);
+        if (args.sessionId) {
+          const session = sessions.get(args.sessionId);
+          if (!session) {
+            throw new Error('Invalid sessionId. Please generate a new session first.');
+          }
+          client.setAccessToken(session.accessToken);
         }
         result = await client.sendMessage(args.conversationId, {
           message: {
@@ -783,8 +815,12 @@ class MIAWMCPServer {
         break;
 
       case 'list_conversation_entries':
-        if (args.accessToken) {
-          client.setAccessToken(args.accessToken);
+        if (args.sessionId) {
+          const session = sessions.get(args.sessionId);
+          if (!session) {
+            throw new Error('Invalid sessionId. Please generate a new session first.');
+          }
+          client.setAccessToken(session.accessToken);
         }
         result = await client.listConversationEntries(
           args.conversationId,
@@ -793,8 +829,12 @@ class MIAWMCPServer {
         break;
 
       case 'get_conversation_routing_status':
-        if (args.accessToken) {
-          client.setAccessToken(args.accessToken);
+        if (args.sessionId) {
+          const session = sessions.get(args.sessionId);
+          if (!session) {
+            throw new Error('Invalid sessionId. Please generate a new session first.');
+          }
+          client.setAccessToken(session.accessToken);
         }
         result = await client.getConversationRoutingStatus(args.conversationId);
         break;
@@ -821,8 +861,12 @@ class MIAWMCPServer {
         break;
 
       case 'close_conversation':
-        if (args.accessToken) {
-          client.setAccessToken(args.accessToken);
+        if (args.sessionId) {
+          const session = sessions.get(args.sessionId);
+          if (!session) {
+            throw new Error('Invalid sessionId. Please generate a new session first.');
+          }
+          client.setAccessToken(session.accessToken);
         }
         await client.closeConversation(args.conversationId);
         result = { success: true, message: 'Conversation closed' };

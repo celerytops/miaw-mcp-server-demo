@@ -5,8 +5,8 @@
 export const MIAW_TOOLS: any[] = [
   {
     name: 'generate_guest_access_token',
-    title: 'Generate Guest Access Token',
-    description: 'Generate a session token for guest users. IMPORTANT: Extract ONLY the accessToken field from the response and pass it to subsequent tools. This token is required for authentication and is safe to use.',
+    title: 'Generate Guest Session',
+    description: 'Create a new guest session for messaging. Returns a sessionId that must be used in all subsequent calls. The session manages authentication internally.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -20,10 +20,11 @@ export const MIAW_TOOLS: any[] = [
     outputSchema: {
       type: 'object',
       properties: {
-        accessToken: { type: 'string', description: 'The session token - save this to pass to other tools' },
-        expiresIn: { type: 'number', description: 'Token expiration in seconds' }
+        sessionId: { type: 'string', description: 'Session identifier - SAVE THIS and pass to all other tools' },
+        expiresIn: { type: 'number', description: 'Session expiration in seconds' },
+        message: { type: 'string', description: 'Status message' }
       },
-      required: ['accessToken']
+      required: ['sessionId']
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     _meta: {}
@@ -31,17 +32,17 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'create_conversation',
     title: 'Create Conversation',
-    description: 'Create a new conversation with a Salesforce agent. Requires the session token. IMPORTANT: Only use the accessToken field extracted from generate_guest_access_token.',
+    description: 'Create a new conversation with a Salesforce agent. Requires the sessionId from generate_guest_access_token.',
     inputSchema: {
       type: 'object',
       properties: {
-        accessToken: { type: 'string', description: 'The session token string from accessToken field (not the full response)' },
+        sessionId: { type: 'string', description: 'Session ID from generate_guest_access_token (REQUIRED)' },
         routableType: { type: 'string', description: 'Type of routing (e.g., "Queue", "Agent")' },
         routingAttributes: { type: 'object', description: 'Routing attributes' },
         capabilities: { type: 'array', items: { type: 'string' }, description: 'Client capabilities' },
         prechatDetails: { type: 'array', items: { type: 'object' }, description: 'Pre-chat form data' }
       },
-      required: ['accessToken'],
+      required: ['sessionId'],
       additionalProperties: false
     },
     outputSchema: {
@@ -62,7 +63,7 @@ export const MIAW_TOOLS: any[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        accessToken: { type: 'string', description: 'Access token from generate_guest_access_token (REQUIRED)' },
+        sessionId: { type: 'string', description: 'Session ID from generate_guest_access_token (REQUIRED)' },
         conversationId: { type: 'string', description: 'The ID of the conversation' },
         text: { type: 'string', description: 'The message text to send' },
         messageType: { type: 'string', description: 'Message type (default: "StaticContentMessage")' }
@@ -88,7 +89,7 @@ export const MIAW_TOOLS: any[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        accessToken: { type: 'string', description: 'Access token from generate_guest_access_token (REQUIRED)' },
+        sessionId: { type: 'string', description: 'Session ID from generate_guest_access_token (REQUIRED)' },
         conversationId: { type: 'string', description: 'The ID of the conversation' },
         continuationToken: { type: 'string', description: 'Optional pagination token' }
       },
@@ -113,7 +114,7 @@ export const MIAW_TOOLS: any[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        accessToken: { type: 'string', description: 'Access token from generate_guest_access_token (REQUIRED)' },
+        sessionId: { type: 'string', description: 'Session ID from generate_guest_access_token (REQUIRED)' },
         conversationId: { type: 'string', description: 'The ID of the conversation' }
       },
       required: ['accessToken', 'conversationId'],
@@ -137,7 +138,7 @@ export const MIAW_TOOLS: any[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        accessToken: { type: 'string', description: 'Access token from generate_guest_access_token (REQUIRED)' },
+        sessionId: { type: 'string', description: 'Session ID from generate_guest_access_token (REQUIRED)' },
         conversationId: { type: 'string', description: 'The ID of the conversation to close' }
       },
       required: ['accessToken', 'conversationId'],
