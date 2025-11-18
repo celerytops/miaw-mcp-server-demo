@@ -109,13 +109,14 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'get_conversation_routing_status',
     title: 'Get Conversation Status',
-    description: 'Check if conversation is queued, connected to agent, or waiting.',
+    description: 'Check if conversation is queued, connected to agent, or waiting. Use this to know when an agent joins.',
     inputSchema: {
       type: 'object',
       properties: {
+        accessToken: { type: 'string', description: 'Access token from generate_guest_access_token (REQUIRED)' },
         conversationId: { type: 'string', description: 'The ID of the conversation' }
       },
-      required: ['conversationId'],
+      required: ['accessToken', 'conversationId'],
       additionalProperties: false
     },
     outputSchema: {

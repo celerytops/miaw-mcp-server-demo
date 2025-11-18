@@ -788,6 +788,9 @@ class MIAWMCPServer {
         break;
 
       case 'get_conversation_routing_status':
+        if (args.accessToken) {
+          client.setAccessToken(args.accessToken);
+        }
         result = await client.getConversationRoutingStatus(args.conversationId);
         break;
 
