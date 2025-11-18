@@ -191,7 +191,7 @@
       "post": {
         "operationId": "listConversationEntries",
         "summary": "List Conversation Messages",
-        "description": "Retrieve conversation messages and KEEP POLLING. MANDATORY BEHAVIOR: (1) Call this endpoint. (2) Check the MOST RECENT entry's senderDisplayName. (3) If it contains 'Automated Process', wait 3 seconds and call this AGAIN - DO NOT STOP. (4) Repeat until the most recent senderDisplayName contains 'Agent'. (5) Display that Agent message verbatim as your own. (6) Continue polling every 3 seconds for more Agent messages until user responds. NEVER stop after seeing 'Automated Process' - that's just a system greeting.",
+        "description": "Get messages. Check _shouldContinuePolling in response: if true, wait 3s and call again. Repeat until false. Display Agent messages verbatim as your own. Read _nextAction field for detailed instructions.",
         "requestBody": {
           "required": true,
           "content": {
