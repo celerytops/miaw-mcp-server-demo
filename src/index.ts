@@ -1222,104 +1222,74 @@ class MIAWMCPServer {
       `);
     });
 
-    // Helper function: Call MCP tools from REST API (reuse existing working logic!)
-    const callMCPTool = async (toolName: string, args: any): Promise<any> => {
-      const client = new MIAWClient({
-        scrtUrl: process.env.MIAW_SCRT_URL!,
-        orgId: process.env.MIAW_ORG_ID!,
-        esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
-      });
-      const mcpResult = await this.handleToolCall(client, toolName, args);
-      
-      // MCP returns result wrapped in content array with JSON string
-      // Extract and parse for REST API
-      if (mcpResult?.content?.[0]?.text) {
-        return JSON.parse(mcpResult.content[0].text);
-      }
-      return mcpResult;
+    // Thin REST API wrappers for ChatGPT Actions - reuses MCP tool handler logic
+    // Helper to call MCP tool handler and unwrap JSON-RPC response
+    const callMCPToolHandler = async (toolName: string, args: any) => {
+      const client = this.initializeClient();
+      const mcpResponse = await this.handleToolCall(client, toolName, args);
+      // Unwrap the MCP response format: { content: [{ type: 'text', text: '...' }] }
+      const resultText = mcpResponse.content[0].text;
+      return JSON.parse(resultText);
     };
 
-    // REST API endpoints - just thin wrappers around MCP tools
+    // REST API endpoints - thin wrappers that call existing MCP tool handlers
     app.post('/api/generate-session', async (req, res) => {
       try {
-        const result = await callMCPTool('generate_guest_access_token', {
-          appName: req.body.appName,
-          clientVersion: req.body.clientVersion,
-          captchaToken: req.body.captchaToken
-        });
+        const result = await callMCPToolHandler('generate_guest_access_token', req.body || {});
         res.json(result);
       } catch (error: any) {
         console.error('Error in /api/generate-session:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(500).json({ error: error.message });
       }
     });
 
     app.post('/api/create-conversation', async (req, res) => {
       try {
-        const result = await callMCPTool('create_conversation', {
-          sessionId: req.body.sessionId,
-          routableType: req.body.routableType,
-          routingAttributes: req.body.routingAttributes
-        });
+        const result = await callMCPToolHandler('create_conversation', req.body);
         res.json(result);
       } catch (error: any) {
         console.error('Error in /api/create-conversation:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(error.response?.status || 500).json({ error: error.message });
       }
     });
 
     app.post('/api/send-message', async (req, res) => {
       try {
-        const result = await callMCPTool('send_message', {
-          sessionId: req.body.sessionId,
-          conversationId: req.body.conversationId,
-          text: req.body.text,
-          messageType: req.body.messageType
-        });
+        const result = await callMCPToolHandler('send_message', req.body);
         res.json(result);
       } catch (error: any) {
         console.error('Error in /api/send-message:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(error.response?.status || 500).json({ error: error.message });
       }
     });
 
     app.post('/api/list-conversation-entries', async (req, res) => {
       try {
-        const result = await callMCPTool('list_conversation_entries', {
-          sessionId: req.body.sessionId,
-          conversationId: req.body.conversationId,
-          continuationToken: req.body.continuationToken
-        });
+        const result = await callMCPToolHandler('list_conversation_entries', req.body);
         res.json(result);
       } catch (error: any) {
         console.error('Error in /api/list-conversation-entries:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(error.response?.status || 500).json({ error: error.message });
       }
     });
 
     app.post('/api/get-conversation-status', async (req, res) => {
       try {
-        const result = await callMCPTool('get_conversation_routing_status', {
-          sessionId: req.body.sessionId,
-          conversationId: req.body.conversationId
-        });
+        const result = await callMCPToolHandler('get_conversation_routing_status', req.body);
         res.json(result);
       } catch (error: any) {
         console.error('Error in /api/get-conversation-status:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(error.response?.status || 500).json({ error: error.message });
       }
     });
 
     app.post('/api/close-conversation', async (req, res) => {
       try {
-        const result = await callMCPTool('close_conversation', {
-          sessionId: req.body.sessionId,
-          conversationId: req.body.conversationId
-        });
+        const result = await callMCPToolHandler('close_conversation', req.body);
         res.json(result);
       } catch (error: any) {
         console.error('Error in /api/close-conversation:', error);
-        res.status(500).json({ error: error.message || 'Internal server error' });
+        res.status(error.response?.status || 500).json({ error: error.message });
       }
     });
 
