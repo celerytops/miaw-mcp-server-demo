@@ -165,29 +165,22 @@ class MIAWClient {
     const convId = conversationId || generateUUID();
     
     // Format request according to MIAW API spec
-    // Note: properties are flat, not wrapped in 'routable' object
+    // IMPORTANT: Only send conversationId, esDeveloperName, and routingAttributes
+    // Other fields like capabilities, prechatDetails cause 400 errors
     const formattedRequest: any = {
       conversationId: convId,
       esDeveloperName: this.config.esDeveloperName
     };
     
-    if (request.routingAttributes) {
+    // Only add routingAttributes if provided and not empty
+    if (request.routingAttributes && Object.keys(request.routingAttributes).length > 0) {
       formattedRequest.routingAttributes = request.routingAttributes;
+    } else {
+      // Send empty object if not provided
+      formattedRequest.routingAttributes = {};
     }
     
-    if (request.capabilities) {
-      formattedRequest.capabilities = request.capabilities;
-    }
-    
-    if (request.conversationContextId) {
-      formattedRequest.conversationContextId = request.conversationContextId;
-    }
-    
-    if (request.prechatDetails) {
-      formattedRequest.prechatDetails = request.prechatDetails;
-    }
-    
-    // Note: routableType is not directly sent in the request based on the API example
+    // Note: capabilities, prechatDetails, conversationContextId, routableType are NOT supported by the API
     
     console.error('Creating conversation with ID:', convId);
     
