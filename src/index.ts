@@ -1234,7 +1234,7 @@ class MIAWMCPServer {
     app.post('/api/generate-session', async (req, res) => {
       try {
         const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_BASE_URL!,
+          scrtUrl: process.env.MIAW_SCRT_URL!,
           orgId: process.env.MIAW_ORG_ID!,
           esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
         });
@@ -1272,7 +1272,7 @@ class MIAWMCPServer {
         }
         
         const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_BASE_URL!,
+          scrtUrl: process.env.MIAW_SCRT_URL!,
           orgId: process.env.MIAW_ORG_ID!,
           esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
         });
@@ -1304,7 +1304,7 @@ class MIAWMCPServer {
         }
         
         const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_BASE_URL!,
+          scrtUrl: process.env.MIAW_SCRT_URL!,
           orgId: process.env.MIAW_ORG_ID!,
           esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
         });
@@ -1335,7 +1335,7 @@ class MIAWMCPServer {
         }
         
         const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_BASE_URL!,
+          scrtUrl: process.env.MIAW_SCRT_URL!,
           orgId: process.env.MIAW_ORG_ID!,
           esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
         });
@@ -1364,7 +1364,7 @@ class MIAWMCPServer {
         }
         
         const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_BASE_URL!,
+          scrtUrl: process.env.MIAW_SCRT_URL!,
           orgId: process.env.MIAW_ORG_ID!,
           esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
         });
@@ -1387,7 +1387,7 @@ class MIAWMCPServer {
         }
         
         const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_BASE_URL!,
+          scrtUrl: process.env.MIAW_SCRT_URL!,
           orgId: process.env.MIAW_ORG_ID!,
           esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
         });
