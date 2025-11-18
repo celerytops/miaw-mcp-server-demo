@@ -6,14 +6,13 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'generate_guest_access_token',
     title: 'Generate Guest Access Token',
-    description: 'Generate an access token for an unauthenticated (guest) user. This is the first step to start a messaging session. For Web platform, deviceId should be omitted.',
+    description: 'Generate an access token for an unauthenticated (guest) user. This is the first step to start a messaging session.',
     inputSchema: {
       type: 'object',
       properties: {
-        deviceId: { type: 'string', description: 'Unique device identifier (UUID format). Optional - omit for Web platform.' },
-        appName: { type: 'string', description: 'Name of the application' },
-        clientVersion: { type: 'string', description: 'Version of the client' },
-        captchaToken: { type: 'string', description: 'Optional CAPTCHA token' }
+        appName: { type: 'string', description: 'Name of the application (optional)' },
+        clientVersion: { type: 'string', description: 'Version of the client (optional)' },
+        captchaToken: { type: 'string', description: 'CAPTCHA token if required by deployment (optional)' }
       },
       required: [],
       additionalProperties: false
