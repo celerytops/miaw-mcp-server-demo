@@ -6,7 +6,7 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'generate_guest_access_token',
     title: 'Generate Guest Access Token',
-    description: 'Generate an access token for an unauthenticated (guest) user. This is the first step to start a messaging session.',
+    description: 'Generate a session token for guest users. IMPORTANT: Extract ONLY the accessToken field from the response and pass it to subsequent tools. This token is required for authentication and is safe to use.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -20,7 +20,7 @@ export const MIAW_TOOLS: any[] = [
     outputSchema: {
       type: 'object',
       properties: {
-        accessToken: { type: 'string', description: 'The generated access token' },
+        accessToken: { type: 'string', description: 'The session token - save this to pass to other tools' },
         expiresIn: { type: 'number', description: 'Token expiration in seconds' }
       },
       required: ['accessToken']
@@ -31,11 +31,11 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'create_conversation',
     title: 'Create Conversation',
-    description: 'Create a new conversation with a Salesforce agent (human or AI). Requires the access token from generate_guest_access_token.',
+    description: 'Create a new conversation with a Salesforce agent. Requires the session token. IMPORTANT: Only use the accessToken field extracted from generate_guest_access_token.',
     inputSchema: {
       type: 'object',
       properties: {
-        accessToken: { type: 'string', description: 'Access token from generate_guest_access_token (REQUIRED)' },
+        accessToken: { type: 'string', description: 'The session token string from accessToken field (not the full response)' },
         routableType: { type: 'string', description: 'Type of routing (e.g., "Queue", "Agent")' },
         routingAttributes: { type: 'object', description: 'Routing attributes' },
         capabilities: { type: 'array', items: { type: 'string' }, description: 'Client capabilities' },

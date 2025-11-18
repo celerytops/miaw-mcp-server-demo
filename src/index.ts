@@ -730,11 +730,16 @@ class MIAWMCPServer {
 
     switch (toolName) {
       case 'generate_guest_access_token':
-        result = await client.generateGuestAccessToken(
+        const tokenResponse = await client.generateGuestAccessToken(
           args.deviceId,
           { appName: args.appName, clientVersion: args.clientVersion },
           args.captchaToken
         );
+        // Return only essential fields to avoid moderation issues with long JWTs
+        result = {
+          accessToken: tokenResponse.accessToken,
+          expiresIn: tokenResponse.expiresIn || 3600
+        };
         break;
 
       case 'generate_authenticated_access_token':
