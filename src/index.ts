@@ -223,22 +223,23 @@ class MIAWClient {
     conversationId: string,
     request: types.SendMessageRequest
   ): Promise<types.SendMessageResponse> {
+    // Generate message ID if not provided
+    const messageId = request.message.staticContentId || generateUUID();
+    
     // Format according to MIAW API spec
     const formattedRequest: any = {
       message: {
+        id: messageId,
         messageType: request.message.messageType || 'StaticContentMessage',
         staticContent: {
           text: request.message.text || '',
-          formatType: request.message.format || ''
+          formatType: request.message.format || 'Text'  // Required field, default to 'Text'
         }
       },
       esDeveloperName: this.config.esDeveloperName
     };
     
-    // Add optional fields if provided
-    if (request.message.staticContentId) {
-      formattedRequest.message.id = request.message.staticContentId;
-    }
+    console.error('Sending message with ID:', messageId, 'to conversation:', conversationId);
     
     const response = await this.axiosInstance.post<types.SendMessageResponse>(
       `/conversation/${conversationId}/message`,
