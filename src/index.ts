@@ -1222,183 +1222,97 @@ class MIAWMCPServer {
       `);
     });
 
-    // Store active API sessions (separate from MCP sessions)
-    interface APISession {
-      accessToken: string;
-      expiresIn: number;
-      conversationId?: string;
-    }
-    const apiSessions = new Map<string, APISession>();
+    // Helper function: Call MCP tools from REST API (reuse existing working logic!)
+    const callMCPTool = async (toolName: string, args: any): Promise<any> => {
+      const client = new MIAWClient({
+        scrtUrl: process.env.MIAW_SCRT_URL!,
+        orgId: process.env.MIAW_ORG_ID!,
+        esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
+      });
+      return await this.handleToolCall(client, toolName, args);
+    };
 
-    // REST API endpoints for ChatGPT Actions
+    // REST API endpoints - just thin wrappers around MCP tools
     app.post('/api/generate-session', async (req, res) => {
       try {
-        const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_SCRT_URL!,
-          orgId: process.env.MIAW_ORG_ID!,
-          esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
+        const result = await callMCPTool('generate_guest_access_token', {
+          appName: req.body.appName,
+          clientVersion: req.body.clientVersion,
+          captchaToken: req.body.captchaToken
         });
-        
-        const tokenResult = await client.generateGuestAccessToken(
-          undefined, // No deviceId for Web platform
-          { appName: req.body.appName || 'ChatGPT Actions', clientVersion: req.body.clientVersion || '1.0.0' },
-          req.body.captchaToken
-        );
-        
-        // Create API session
-        const sessionId = generateSessionId();
-        apiSessions.set(sessionId, {
-          accessToken: tokenResult.accessToken,
-          expiresIn: tokenResult.expiresIn,
-          conversationId: undefined
-        });
-        
-        res.json({
-          sessionId,
-          expiresIn: tokenResult.expiresIn,
-          message: 'Session created successfully. Use this sessionId for all subsequent calls.'
-        });
+        res.json(result);
       } catch (error: any) {
         console.error('Error in /api/generate-session:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message || 'Internal server error' });
       }
     });
 
     app.post('/api/create-conversation', async (req, res) => {
       try {
-        const session = apiSessions.get(req.body.sessionId);
-        if (!session) {
-          return res.status(401).json({ error: 'Invalid sessionId. Please generate a new session first.' });
-        }
-        
-        const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_SCRT_URL!,
-          orgId: process.env.MIAW_ORG_ID!,
-          esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
-        });
-        client.setAccessToken(session.accessToken);
-        
-        const convResult = await client.createConversation({
+        const result = await callMCPTool('create_conversation', {
+          sessionId: req.body.sessionId,
           routableType: req.body.routableType,
           routingAttributes: req.body.routingAttributes
         });
-        
-        // Store conversationId in session
-        session.conversationId = convResult.conversationId;
-        
-        res.json({
-          conversationId: convResult.conversationId,
-          status: 'created'
-        });
+        res.json(result);
       } catch (error: any) {
         console.error('Error in /api/create-conversation:', error);
-        res.status(error.response?.status || 500).json({ error: error.message });
+        res.status(500).json({ error: error.message || 'Internal server error' });
       }
     });
 
     app.post('/api/send-message', async (req, res) => {
       try {
-        const session = apiSessions.get(req.body.sessionId);
-        if (!session) {
-          return res.status(401).json({ error: 'Invalid sessionId. Please generate a new session first.' });
-        }
-        
-        const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_SCRT_URL!,
-          orgId: process.env.MIAW_ORG_ID!,
-          esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
+        const result = await callMCPTool('send_message', {
+          sessionId: req.body.sessionId,
+          conversationId: req.body.conversationId,
+          text: req.body.text,
+          messageType: req.body.messageType
         });
-        client.setAccessToken(session.accessToken);
-        
-        const sendResult = await client.sendMessage(req.body.conversationId, {
-          message: {
-            text: req.body.text,
-            messageType: req.body.messageType || 'StaticContentMessage'
-          }
-        });
-        
-        res.json({
-          messageId: sendResult.id,
-          success: true
-        });
+        res.json(result);
       } catch (error: any) {
         console.error('Error in /api/send-message:', error);
-        res.status(error.response?.status || 500).json({ error: error.message });
+        res.status(500).json({ error: error.message || 'Internal server error' });
       }
     });
 
     app.post('/api/list-conversation-entries', async (req, res) => {
       try {
-        const session = apiSessions.get(req.body.sessionId);
-        if (!session) {
-          return res.status(401).json({ error: 'Invalid sessionId. Please generate a new session first.' });
-        }
-        
-        const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_SCRT_URL!,
-          orgId: process.env.MIAW_ORG_ID!,
-          esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
+        const result = await callMCPTool('list_conversation_entries', {
+          sessionId: req.body.sessionId,
+          conversationId: req.body.conversationId,
+          continuationToken: req.body.continuationToken
         });
-        client.setAccessToken(session.accessToken);
-        
-        const entriesResult = await client.listConversationEntries(
-          req.body.conversationId,
-          req.body.continuationToken
-        );
-        
-        res.json({
-          entries: entriesResult.entries,
-          continuationToken: entriesResult.continuationToken
-        });
+        res.json(result);
       } catch (error: any) {
         console.error('Error in /api/list-conversation-entries:', error);
-        res.status(error.response?.status || 500).json({ error: error.message });
+        res.status(500).json({ error: error.message || 'Internal server error' });
       }
     });
 
     app.post('/api/get-conversation-status', async (req, res) => {
       try {
-        const session = apiSessions.get(req.body.sessionId);
-        if (!session) {
-          return res.status(401).json({ error: 'Invalid sessionId. Please generate a new session first.' });
-        }
-        
-        const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_SCRT_URL!,
-          orgId: process.env.MIAW_ORG_ID!,
-          esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
+        const result = await callMCPTool('get_conversation_routing_status', {
+          sessionId: req.body.sessionId,
+          conversationId: req.body.conversationId
         });
-        client.setAccessToken(session.accessToken);
-        
-        const statusResult = await client.getConversationRoutingStatus(req.body.conversationId);
-        
-        res.json(statusResult);
+        res.json(result);
       } catch (error: any) {
         console.error('Error in /api/get-conversation-status:', error);
-        res.status(error.response?.status || 500).json({ error: error.message });
+        res.status(500).json({ error: error.message || 'Internal server error' });
       }
     });
 
     app.post('/api/close-conversation', async (req, res) => {
       try {
-        const session = apiSessions.get(req.body.sessionId);
-        if (!session) {
-          return res.status(401).json({ error: 'Invalid sessionId. Please generate a new session first.' });
-        }
-        
-        const client = new MIAWClient({
-          scrtUrl: process.env.MIAW_SCRT_URL!,
-          orgId: process.env.MIAW_ORG_ID!,
-          esDeveloperName: process.env.MIAW_ES_DEVELOPER_NAME!
+        const result = await callMCPTool('close_conversation', {
+          sessionId: req.body.sessionId,
+          conversationId: req.body.conversationId
         });
-        client.setAccessToken(session.accessToken);
-        
-        await client.closeConversation(req.body.conversationId);
-        
-        res.json({ success: true });
+        res.json(result);
       } catch (error: any) {
         console.error('Error in /api/close-conversation:', error);
-        res.status(error.response?.status || 500).json({ error: error.message });
+        res.status(500).json({ error: error.message || 'Internal server error' });
       }
     });
 
