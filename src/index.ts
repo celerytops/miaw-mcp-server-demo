@@ -320,7 +320,7 @@ class MIAWClient {
   ): Promise<types.ListConversationEntriesResponse> {
     const params = continuationToken ? { continuationToken } : {};
     const response = await this.axiosInstance.get<types.ListConversationEntriesResponse>(
-      `/conversations/${conversationId}/entries`,
+      `/conversation/${conversationId}/entries`,
       { params }
     );
     return response.data;
