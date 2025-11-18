@@ -34,6 +34,11 @@ https://miaw-mcp-server-6df009bc852c.herokuapp.com/openapi-schema.json
 
 4. Click **Import**
 
+**Note:** The schema includes a privacy policy URL that ChatGPT will automatically recognize. If prompted for a privacy policy, it's already configured at:
+```
+https://miaw-mcp-server-6df009bc852c.herokuapp.com/privacy-policy
+```
+
 ### Step 3: Configure the Actions
 
 After importing, you should see 6 actions:
@@ -172,9 +177,10 @@ The schema instructs ChatGPT to:
 
 ## Support
 
-- Server Info: https://miaw-mcp-server-6df009bc852c.herokuapp.com/
-- Health Check: https://miaw-mcp-server-6df009bc852c.herokuapp.com/health
-- OpenAPI Schema: https://miaw-mcp-server-6df009bc852c.herokuapp.com/openapi-schema.json
+- **Server Info**: https://miaw-mcp-server-6df009bc852c.herokuapp.com/
+- **Health Check**: https://miaw-mcp-server-6df009bc852c.herokuapp.com/health
+- **OpenAPI Schema**: https://miaw-mcp-server-6df009bc852c.herokuapp.com/openapi-schema.json
+- **Privacy Policy**: https://miaw-mcp-server-6df009bc852c.herokuapp.com/privacy-policy
 
 Both MCP and REST API integrations are fully functional and don't interfere with each other!
 
