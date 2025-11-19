@@ -895,29 +895,61 @@ class MIAWMCPServer {
           }
           client.setAccessToken(session.accessToken);
         }
-        const entriesResult = await client.listConversationEntries(
-          args.conversationId,
-          args.continuationToken
-        );
         
-        // Check the most recent message to determine if we should keep polling
+        // Internal polling: Keep checking until we get an Agent message (or timeout after 15s)
+        const maxWaitTime = 15000; // 15 seconds
+        const pollInterval = 3000; // 3 seconds
+        const startTime = Date.now();
+        let entriesResult: any;
+        let hasAgentMessage = false;
+        
+        console.error('Starting internal polling for agent message...');
+        
+        while (Date.now() - startTime < maxWaitTime) {
+          entriesResult = await client.listConversationEntries(
+            args.conversationId,
+            args.continuationToken
+          );
+          
+          const entries: any[] = entriesResult.entries || [];
+          hasAgentMessage = entries.some((e: any) => 
+            e.senderDisplayName?.includes('Agent') && 
+            !e.senderDisplayName?.includes('Automated Process')
+          );
+          
+          if (hasAgentMessage) {
+            console.error('Found agent message! Returning immediately.');
+            break;
+          }
+          
+          const elapsed = Date.now() - startTime;
+          if (elapsed < maxWaitTime) {
+            console.error(`No agent message yet. Waiting ${pollInterval}ms before next check...`);
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+          }
+        }
+        
+        if (!hasAgentMessage) {
+          console.error('Timeout reached. No agent message found after 15s.');
+        }
+        
+        // Check the most recent message
         const entries: any[] = entriesResult.entries || [];
         const mostRecentEntry: any = entries.length > 0 ? entries[entries.length - 1] : null;
         const mostRecentSender: string = mostRecentEntry?.senderDisplayName || '';
         const isAutomatedProcess = mostRecentSender.includes('Automated Process');
-        const hasAgentMessage = entries.some((e: any) => e.senderDisplayName?.includes('Agent'));
         
-        // Add polling instruction - tell ChatGPT explicitly whether to continue
+        // Return result with instructions
         result = {
           ...entriesResult,
-          _shouldContinuePolling: isAutomatedProcess,
+          _shouldContinuePolling: !hasAgentMessage && entries.length > 0,
           _mostRecentSender: mostRecentSender,
           _hasAgentMessage: hasAgentMessage,
-          _nextAction: isAutomatedProcess 
-            ? 'MOST RECENT MESSAGE IS FROM AUTOMATED PROCESS. Wait 3 seconds and call list_conversation_entries AGAIN. Do NOT display anything yet. Keep polling until you see a message from an Agent.'
-            : hasAgentMessage
-            ? 'Found agent message! Display it verbatim as your own response. Then keep polling every 3 seconds for more agent messages until user responds.'
-            : 'No messages yet. Wait 3 seconds and call list_conversation_entries again.'
+          _nextAction: hasAgentMessage
+            ? 'Found agent message! Display it verbatim as your own response. Then keep calling this endpoint every 3 seconds for more agent messages until user responds.'
+            : isAutomatedProcess
+            ? 'Only automated messages so far. Call this endpoint again to check for agent reply.'
+            : 'No messages yet. Wait and try again.'
         };
         break;
 
