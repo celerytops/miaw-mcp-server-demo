@@ -896,87 +896,89 @@ class MIAWMCPServer {
           client.setAccessToken(session.accessToken);
         }
         
-        // Internal polling: Keep checking until we get an Agent message (or timeout after 15s)
-        const maxWaitTime = 15000; // 15 seconds
-        const pollInterval = 1000; // 1 second (faster response!)
-        const startTime = Date.now();
+        // Internal polling: Keep checking until we get a REAL Agent message (no timeout!)
+        const pollInterval = 1000; // 1 second
         let entriesResult: any;
-        let hasAgentMessage = false;
+        let hasRealAgentMessage = false;
         
-        console.error('Starting internal polling for agent message...');
+        console.error('Starting internal polling for real agent message...');
         
-        while (Date.now() - startTime < maxWaitTime) {
+        // Poll indefinitely until we find a real agent message
+        while (!hasRealAgentMessage) {
           entriesResult = await client.listConversationEntries(
             args.conversationId,
             args.continuationToken
           );
           
           const entries: any[] = entriesResult.entries || [];
-          hasAgentMessage = entries.some((e: any) => 
-            e.senderDisplayName?.includes('Agent') && 
+          
+          // Find entries that are actual messages from real agents (not automated, not bots)
+          const agentMessages = entries.filter((e: any) => 
+            e.entryType === 'Message' &&
+            e.sender?.role === 'Agent' &&
             !e.senderDisplayName?.includes('Automated Process')
           );
           
-          if (hasAgentMessage) {
-            console.error('Found agent message! Returning immediately.');
+          hasRealAgentMessage = agentMessages.length > 0;
+          
+          if (hasRealAgentMessage) {
+            console.error(`Found ${agentMessages.length} real agent message(s)! Returning immediately.`);
             break;
           }
           
-          const elapsed = Date.now() - startTime;
-          if (elapsed < maxWaitTime) {
-            console.error(`No agent message yet. Waiting ${pollInterval}ms before next check...`);
-            await new Promise(resolve => setTimeout(resolve, pollInterval));
+          console.error(`No real agent messages yet. Waiting ${pollInterval}ms before next check...`);
+          await new Promise(resolve => setTimeout(resolve, pollInterval));
+        }
+        
+        // After finding an agent message, wait 3 more seconds for potential follow-ups (transfers)
+        console.error('Agent message found. Checking for immediate follow-ups (transfers/handoffs)...');
+        const followUpWaitTime = 3000; // Wait 3 more seconds
+        const followUpStartTime = Date.now();
+        let lastEntryCount = entriesResult.entries?.length || 0;
+        
+        while (Date.now() - followUpStartTime < followUpWaitTime) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const followUpResult = await client.listConversationEntries(
+            args.conversationId,
+            args.continuationToken
+          );
+          
+          const currentEntryCount = followUpResult.entries?.length || 0;
+          if (currentEntryCount > lastEntryCount) {
+            console.error(`New message detected during follow-up check! (${lastEntryCount} → ${currentEntryCount})`);
+            entriesResult = followUpResult; // Use the newer result
+            lastEntryCount = currentEntryCount;
           }
         }
         
-        if (!hasAgentMessage) {
-          console.error('Timeout reached. No agent message found after 15s.');
-        }
+        console.error('Follow-up check complete.');
         
-        // If we found an agent message, wait a bit longer to catch potential transfers/handoffs
-        if (hasAgentMessage) {
-          console.error('Agent message found. Checking for immediate follow-ups (transfers/handoffs)...');
-          const followUpWaitTime = 3000; // Wait 3 more seconds
-          const followUpStartTime = Date.now();
-          let lastEntryCount = entriesResult.entries?.length || 0;
-          
-          while (Date.now() - followUpStartTime < followUpWaitTime) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            const followUpResult = await client.listConversationEntries(
-              args.conversationId,
-              args.continuationToken
-            );
-            
-            const currentEntryCount = followUpResult.entries?.length || 0;
-            if (currentEntryCount > lastEntryCount) {
-              console.error(`New message detected during follow-up check! (${lastEntryCount} → ${currentEntryCount})`);
-              entriesResult = followUpResult; // Use the newer result
-              lastEntryCount = currentEntryCount;
-              // Keep waiting to see if more messages come (like transfer greeting)
-            }
-          }
-          
-          console.error('Follow-up check complete.');
-        }
+        // Find the most recent message by transcriptedTimestamp (not array order!)
+        const allEntries: any[] = entriesResult.entries || [];
+        const messageEntries = allEntries
+          .filter((e: any) => e.entryType === 'Message')
+          .sort((a: any, b: any) => (b.transcriptedTimestamp || 0) - (a.transcriptedTimestamp || 0));
         
-        // Check the most recent message
-        const entries: any[] = entriesResult.entries || [];
-        const mostRecentEntry: any = entries.length > 0 ? entries[entries.length - 1] : null;
-        const mostRecentSender: string = mostRecentEntry?.senderDisplayName || '';
-        const isAutomatedProcess = mostRecentSender.includes('Automated Process');
+        const mostRecentMessage = messageEntries[0];
+        const mostRecentSender: string = mostRecentMessage?.senderDisplayName || '';
         
-        // Return result with instructions
+        // Filter entries to only include real agent messages for display
+        const agentMessagesToDisplay = allEntries.filter((e: any) => 
+          e.entryType === 'Message' &&
+          e.sender?.role === 'Agent' &&
+          !e.senderDisplayName?.includes('Automated Process')
+        );
+        
+        // Return result with instructions to keep polling
         result = {
           ...entriesResult,
-          _shouldContinuePolling: !hasAgentMessage && entries.length > 0,
+          conversationEntries: agentMessagesToDisplay, // Only return agent messages (no automated)
+          _shouldContinuePolling: true, // ALWAYS keep polling
           _mostRecentSender: mostRecentSender,
-          _hasAgentMessage: hasAgentMessage,
-          _nextAction: hasAgentMessage
-            ? 'Found agent message! Display ALL new agent messages verbatim (there may be multiple if transfer occurred). Then keep calling this endpoint every 3 seconds for more agent messages until user responds.'
-            : isAutomatedProcess
-            ? 'Only automated messages so far. Call this endpoint again to check for agent reply.'
-            : 'No messages yet. Wait and try again.'
+          _hasAgentMessage: true,
+          _agentMessageCount: agentMessagesToDisplay.length,
+          _nextAction: `CRITICAL: Display ALL ${agentMessagesToDisplay.length} agent message(s) verbatim. Then IMMEDIATELY call this endpoint again to listen for more agent messages. NEVER stop polling until user sends a new message. Act as a seamless messenger - present agent words as your own.`
         };
         break;
 

@@ -192,7 +192,7 @@
       "post": {
         "operationId": "listConversationEntries",
         "summary": "List Conversation Messages",
-        "description": "Get messages. Check _shouldContinuePolling in response: if true, wait 3s and call again. Repeat until false. Display Agent messages verbatim as your own. Read _nextAction field for detailed instructions.",
+        "description": "Get agent messages. Server waits for real agent (not automated) messages. ALWAYS keep polling every 3s after displaying messages. Never stop until user responds. Display agent messages verbatim as your own words.",
         "requestBody": {
           "required": true,
           "content": {
@@ -238,15 +238,19 @@
                     },
                     "_shouldContinuePolling": {
                       "type": "boolean",
-                      "description": "CRITICAL: If true, the most recent message is from Automated Process. You MUST call this endpoint again in 3 seconds. Do NOT display anything yet."
+                      "description": "ALWAYS true. Keep calling this endpoint every 3 seconds to listen for more agent messages."
                     },
                     "_mostRecentSender": {
                       "type": "string",
-                      "description": "The senderDisplayName of the most recent message. Check if this contains 'Automated Process' - if so, keep polling."
+                      "description": "The senderDisplayName of the most recent message by timestamp. Ignore if 'Automated Process'."
                     },
                     "_hasAgentMessage": {
                       "type": "boolean",
-                      "description": "Whether any message from an Agent (not Automated Process) exists in the entries."
+                      "description": "Always true - server waits for real agent messages before returning."
+                    },
+                    "_agentMessageCount": {
+                      "type": "number",
+                      "description": "Number of agent messages returned (may be multiple if transfer occurred)."
                     },
                     "_nextAction": {
                       "type": "string",
