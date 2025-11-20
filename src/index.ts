@@ -896,112 +896,59 @@ class MIAWMCPServer {
           client.setAccessToken(session.accessToken);
         }
         
-        // Internal polling: Keep checking until we get a REAL Agent message (with Heroku-safe timeout)
-        const maxWaitTime = 25000; // 25 seconds (Heroku has 30s timeout, be safe)
+        // Simple polling: Wait until most recent message is NOT "Automated Process"
+        const maxWaitTime = 25000; // 25 seconds (Heroku has 30s timeout)
         const pollInterval = 1000; // 1 second
         const startTime = Date.now();
         let entriesResult: any;
-        let hasRealAgentMessage = false;
+        let mostRecentIsNotAutomated = false;
         
-        console.error('Starting internal polling for real agent message...');
+        console.error('Polling for non-Automated-Process message...');
         
-        // Poll until we find a real agent/bot message OR hit timeout
+        // Poll until most recent message is NOT "Automated Process" OR timeout
         while (Date.now() - startTime < maxWaitTime) {
           entriesResult = await client.listConversationEntries(
             args.conversationId,
             args.continuationToken
           );
           
-          const entries: any[] = entriesResult.entries || [];
+          const allEntries: any[] = entriesResult.entries || [];
           
-          // Find messages from agents OR chatbots (NOT Automated Process system messages)
-          const agentMessages = entries.filter((e: any) => 
-            e.entryType === 'Message' &&
-            !e.senderDisplayName?.includes('Automated Process')
-          );
+          // Find most recent message by timestamp
+          const messages = allEntries
+            .filter((e: any) => e.entryType === 'Message')
+            .sort((a: any, b: any) => (b.transcriptedTimestamp || 0) - (a.transcriptedTimestamp || 0));
           
-          hasRealAgentMessage = agentMessages.length > 0;
+          const mostRecentMessage = messages[0];
+          const mostRecentSender = mostRecentMessage?.senderDisplayName || '';
           
-          if (hasRealAgentMessage) {
-            console.error(`Found ${agentMessages.length} agent/bot message(s)! Returning immediately.`);
+          // Check if most recent is NOT Automated Process
+          mostRecentIsNotAutomated = mostRecentMessage && !mostRecentSender.includes('Automated Process');
+          
+          if (mostRecentIsNotAutomated) {
+            console.error(`Most recent message is from "${mostRecentSender}" (not Automated Process). Returning!`);
             break;
           }
           
           const elapsed = Date.now() - startTime;
           if (elapsed < maxWaitTime) {
-            console.error(`No agent/bot messages yet. Waiting ${pollInterval}ms before next check... (${Math.floor(elapsed/1000)}s elapsed)`);
+            console.error(`Most recent is still Automated Process. Polling again... (${Math.floor(elapsed/1000)}s)`);
             await new Promise(resolve => setTimeout(resolve, pollInterval));
           }
         }
         
-        if (!hasRealAgentMessage) {
-          console.error('Timeout reached (25s). No agent/bot message found yet.');
+        if (!mostRecentIsNotAutomated) {
+          console.error('Timeout (25s). Most recent still Automated Process or no messages.');
         }
         
-        // If we found an agent message, wait 3 more seconds for potential follow-ups (transfers)
-        if (hasRealAgentMessage) {
-          console.error('Agent message found. Checking for immediate follow-ups (transfers/handoffs)...');
-          const followUpWaitTime = 3000; // Wait 3 more seconds
-          const followUpStartTime = Date.now();
-          let lastEntryCount = entriesResult.entries?.length || 0;
-          
-          while (Date.now() - followUpStartTime < followUpWaitTime) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            const followUpResult = await client.listConversationEntries(
-              args.conversationId,
-              args.continuationToken
-            );
-            
-            const currentEntryCount = followUpResult.entries?.length || 0;
-            if (currentEntryCount > lastEntryCount) {
-              console.error(`New message detected during follow-up check! (${lastEntryCount} → ${currentEntryCount})`);
-              entriesResult = followUpResult; // Use the newer result
-              lastEntryCount = currentEntryCount;
-            }
-          }
-          
-          console.error('Follow-up check complete.');
-        }
-        
-        // Find the most recent message by transcriptedTimestamp (not array order!)
-        const allEntries: any[] = entriesResult.entries || [];
-        const messageEntries = allEntries
-          .filter((e: any) => e.entryType === 'Message')
-          .sort((a: any, b: any) => (b.transcriptedTimestamp || 0) - (a.transcriptedTimestamp || 0));
-        
-        const mostRecentMessage = messageEntries[0];
-        const mostRecentSender: string = mostRecentMessage?.senderDisplayName || '';
-        
-        // Filter to show messages from agents OR chatbots (exclude ONLY Automated Process)
-        const agentMessagesToDisplay = allEntries.filter((e: any) => 
-          e.entryType === 'Message' &&
-          !e.senderDisplayName?.includes('Automated Process')
-        );
-        
-        // Return result with instructions based on whether we found agent messages
-        if (hasRealAgentMessage) {
-          result = {
-            ...entriesResult,
-            conversationEntries: agentMessagesToDisplay, // Only return agent messages (no automated)
-            _shouldContinuePolling: true, // Keep polling for more
-            _mostRecentSender: mostRecentSender,
-            _hasAgentMessage: true,
-            _agentMessageCount: agentMessagesToDisplay.length,
-            _nextAction: `CRITICAL: Display ALL ${agentMessagesToDisplay.length} agent message(s) verbatim as your own words. Then IMMEDIATELY call this endpoint again to listen for more. NEVER stop polling until user sends a new message.`
-          };
-        } else {
-          // Timeout - no agent message yet, tell ChatGPT to call again immediately
-          result = {
-            ...entriesResult,
-            conversationEntries: [], // No agent messages to display
-            _shouldContinuePolling: true,
-            _mostRecentSender: mostRecentSender,
-            _hasAgentMessage: false,
-            _agentMessageCount: 0,
-            _nextAction: 'No agent message yet (still waiting/in queue). IMMEDIATELY call this endpoint again to keep listening. Do NOT tell the user anything - just keep polling silently.'
-          };
-        }
+        // Return ALL entries (ChatGPT will see the full conversation)
+        result = {
+          ...entriesResult,
+          _shouldContinuePolling: true, // Always keep listening
+          _nextAction: mostRecentIsNotAutomated
+            ? 'Display the most recent message verbatim as your own words. Then IMMEDIATELY call this endpoint again to listen for more. NEVER stop until user sends a message.'
+            : 'No new message yet. IMMEDIATELY call this endpoint again. Do NOT tell user anything - keep polling silently.'
+        };
         break;
 
       case 'get_conversation_routing_status':
