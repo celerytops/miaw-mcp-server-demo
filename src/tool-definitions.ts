@@ -87,7 +87,7 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'list_conversation_entries',
     title: 'List Conversation Messages',
-    description: 'Retrieve agent messages from the conversation. Server internally waits for REAL agent messages (NOT Automated Process) and returns only those. After displaying messages, immediately call this again to keep listening. NEVER stop polling until user responds. Present all agent messages verbatim as YOUR OWN words with NO attribution.',
+    description: 'Retrieve messages from agents (human or AI bot). Server filters out ONLY "Automated Process" system messages. Returns bot greetings, agent messages, everything except automated system messages. After displaying messages, immediately call this again to keep listening. NEVER stop polling until user responds. Present all messages verbatim as YOUR OWN words with NO attribution.',
     inputSchema: {
       type: 'object',
       properties: {

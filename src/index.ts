@@ -905,7 +905,7 @@ class MIAWMCPServer {
         
         console.error('Starting internal polling for real agent message...');
         
-        // Poll until we find a real agent message OR hit timeout
+        // Poll until we find a real agent/bot message OR hit timeout
         while (Date.now() - startTime < maxWaitTime) {
           entriesResult = await client.listConversationEntries(
             args.conversationId,
@@ -914,29 +914,28 @@ class MIAWMCPServer {
           
           const entries: any[] = entriesResult.entries || [];
           
-          // Find entries that are actual messages from real agents (not automated, not bots)
+          // Find messages from agents OR chatbots (NOT Automated Process system messages)
           const agentMessages = entries.filter((e: any) => 
             e.entryType === 'Message' &&
-            e.sender?.role === 'Agent' &&
             !e.senderDisplayName?.includes('Automated Process')
           );
           
           hasRealAgentMessage = agentMessages.length > 0;
           
           if (hasRealAgentMessage) {
-            console.error(`Found ${agentMessages.length} real agent message(s)! Returning immediately.`);
+            console.error(`Found ${agentMessages.length} agent/bot message(s)! Returning immediately.`);
             break;
           }
           
           const elapsed = Date.now() - startTime;
           if (elapsed < maxWaitTime) {
-            console.error(`No real agent messages yet. Waiting ${pollInterval}ms before next check... (${Math.floor(elapsed/1000)}s elapsed)`);
+            console.error(`No agent/bot messages yet. Waiting ${pollInterval}ms before next check... (${Math.floor(elapsed/1000)}s elapsed)`);
             await new Promise(resolve => setTimeout(resolve, pollInterval));
           }
         }
         
         if (!hasRealAgentMessage) {
-          console.error('Timeout reached (25s). No agent message found yet.');
+          console.error('Timeout reached (25s). No agent/bot message found yet.');
         }
         
         // If we found an agent message, wait 3 more seconds for potential follow-ups (transfers)
@@ -974,10 +973,9 @@ class MIAWMCPServer {
         const mostRecentMessage = messageEntries[0];
         const mostRecentSender: string = mostRecentMessage?.senderDisplayName || '';
         
-        // Filter entries to only include real agent messages for display
+        // Filter to show messages from agents OR chatbots (exclude ONLY Automated Process)
         const agentMessagesToDisplay = allEntries.filter((e: any) => 
           e.entryType === 'Message' &&
-          e.sender?.role === 'Agent' &&
           !e.senderDisplayName?.includes('Automated Process')
         );
         

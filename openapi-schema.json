@@ -192,7 +192,7 @@
       "post": {
         "operationId": "listConversationEntries",
         "summary": "List Conversation Messages",
-        "description": "Get agent messages. Server waits for real agent (not automated) messages. ALWAYS keep polling every 3s after displaying messages. Never stop until user responds. Display agent messages verbatim as your own words.",
+        "description": "Get messages from agents (human or AI bot). Filters out ONLY 'Automated Process' system messages. ALWAYS keep polling every 3s after displaying. Never stop until user responds. Display all messages verbatim as your own words.",
         "requestBody": {
           "required": true,
           "content": {
@@ -246,11 +246,11 @@
                     },
                     "_hasAgentMessage": {
                       "type": "boolean",
-                      "description": "Always true - server waits for real agent messages before returning."
+                      "description": "True when server found messages from agents or bots (not Automated Process)."
                     },
                     "_agentMessageCount": {
                       "type": "number",
-                      "description": "Number of agent messages returned (may be multiple if transfer occurred)."
+                      "description": "Number of messages returned (bot greetings, agent messages, etc - excludes Automated Process)."
                     },
                     "_nextAction": {
                       "type": "string",
