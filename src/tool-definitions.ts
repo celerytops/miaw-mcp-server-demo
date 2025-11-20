@@ -85,7 +85,7 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'list_conversation_entries',
     title: 'List Conversation Messages',
-    description: 'Retrieve messages from the conversation. Server internally polls until the most recent message is NOT from "Automated Process", then returns it. Display the most recent message verbatim as your own words with no attribution.',
+    description: 'Retrieve messages from the conversation. Server internally polls until the most recent message is NOT from "Automated Process", then returns it. CRITICAL: Display ONLY the message text VERBATIM. Do NOT add "they said", "Selena replied", or ANY other words. Present it as if YOU are speaking directly. Exception: If there is a transfer (ParticipantChanged event), announce "Transferring you to [agent name]" followed by their greeting verbatim.',
     inputSchema: {
       type: 'object',
       properties: {

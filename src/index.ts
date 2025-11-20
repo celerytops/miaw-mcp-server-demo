@@ -898,7 +898,7 @@ class MIAWMCPServer {
         
         // Simple polling: Wait until most recent message is NOT "Automated Process"
         const maxWaitTime = 25000; // 25 seconds (Heroku has 30s timeout)
-        const pollInterval = 1000; // 1 second
+        const pollInterval = 500; // 500ms (0.5 seconds) - faster response!
         const startTime = Date.now();
         let entriesResult: any;
         let mostRecentIsNotAutomated = false;
@@ -907,10 +907,15 @@ class MIAWMCPServer {
         
         // Poll until most recent message is NOT "Automated Process" OR timeout
         while (Date.now() - startTime < maxWaitTime) {
+          const pollStart = Date.now();
+          
           entriesResult = await client.listConversationEntries(
             args.conversationId,
             args.continuationToken
           );
+          
+          const apiTime = Date.now() - pollStart;
+          console.error(`API call took ${apiTime}ms`);
           
           const allEntries: any[] = entriesResult.entries || [];
           
@@ -926,13 +931,13 @@ class MIAWMCPServer {
           mostRecentIsNotAutomated = mostRecentMessage && !mostRecentSender.includes('Automated Process');
           
           if (mostRecentIsNotAutomated) {
-            console.error(`Most recent message is from "${mostRecentSender}" (not Automated Process). Returning!`);
+            console.error(`Most recent message is from "${mostRecentSender}" (not Automated Process). Returning immediately!`);
             break;
           }
           
           const elapsed = Date.now() - startTime;
           if (elapsed < maxWaitTime) {
-            console.error(`Most recent is still Automated Process. Polling again... (${Math.floor(elapsed/1000)}s)`);
+            console.error(`Most recent is still Automated Process. Polling again in ${pollInterval}ms... (${Math.floor(elapsed/1000)}s elapsed)`);
             await new Promise(resolve => setTimeout(resolve, pollInterval));
           }
         }
