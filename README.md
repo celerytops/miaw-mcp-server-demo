@@ -56,7 +56,7 @@ Or manually:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/miaw-mcp-server.git
+git clone https://github.com/skyrmionz/miaw-mcp-server.git
 cd miaw-mcp-server
 
 # Create Heroku app
@@ -384,8 +384,8 @@ Built with:
 
 ## 💬 Support
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/miaw-mcp-server/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/miaw-mcp-server/discussions)
+- **Issues:** [GitHub Issues](https://github.com/skyrmionz/miaw-mcp-server/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/skyrmionz/miaw-mcp-server/discussions)
 - **Salesforce Help:** [Trailblazer Community](https://trailblazers.salesforce.com)
 
 ---

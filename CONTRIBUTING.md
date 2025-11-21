@@ -88,7 +88,7 @@ Describe the tests you ran.
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR-USERNAME/miaw-mcp-server.git
+git clone https://github.com/skyrmionz/miaw-mcp-server.git
 cd miaw-mcp-server
 
 # Install dependencies

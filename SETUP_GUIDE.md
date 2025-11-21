@@ -113,7 +113,7 @@ This guide walks you through setting up the MIAW MCP Server for ChatGPT integrat
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/miaw-mcp-server.git
+git clone https://github.com/skyrmionz/miaw-mcp-server.git
 cd miaw-mcp-server
 
 # 2. Login to Heroku
@@ -497,7 +497,7 @@ If it doesn't, manually trigger a new session.
    - Add your API user to debug logs
 
 3. **GitHub Issues:**
-   - [Open an issue](https://github.com/yourusername/miaw-mcp-server/issues)
+   - [Open an issue](https://github.com/skyrmionz/miaw-mcp-server/issues)
    - Include logs and error messages
 
 4. **Salesforce Trailblazer Community:**
