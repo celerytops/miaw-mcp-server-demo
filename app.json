@@ -1,7 +1,7 @@
 {
   "name": "MIAW MCP Server",
   "description": "Connect ChatGPT to Salesforce Enhanced Chat (MIAW) - enables seamless handoffs to Salesforce agents (both AI and human)",
-  "repository": "https://github.com/yourusername/miaw-mcp-server",
+  "repository": "https://github.com/skyrmionz/miaw-mcp-server",
   "logo": "https://cdn.worldvectorlogo.com/logos/salesforce-2.svg",
   "keywords": [
     "mcp",
