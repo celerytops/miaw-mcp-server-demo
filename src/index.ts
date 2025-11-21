@@ -802,7 +802,7 @@ class MIAWMCPServer {
     client: MIAWClient,
     toolName: string,
     args: any
-  ): Promise<{ content: Array<{ type: string; text: string }> }> {
+  ): Promise<{ content: Array<{ type: string; text: string }>; _meta?: any }> {
     let result: any;
 
     switch (toolName) {
@@ -1022,7 +1022,11 @@ class MIAWMCPServer {
           type: 'text',
           text: JSON.stringify(result, null, 2)
         }
-      ]
+      ],
+      _meta: {
+        'openai/toolInvocation/invoking': 'Talking to Salesforce',
+        'openai/toolInvocation/invoked': 'Salesforce responded'
+      }
     };
   }
 
@@ -1279,7 +1283,12 @@ class MIAWMCPServer {
       const mcpResponse = await this.handleToolCall(client, toolName, args);
       // Unwrap the MCP response format: { content: [{ type: 'text', text: '...' }] }
       const resultText = mcpResponse.content[0].text;
-      return JSON.parse(resultText);
+      const result = JSON.parse(resultText);
+      // Include _meta field if present (for OpenAI Custom GPT Actions)
+      if (mcpResponse._meta) {
+        result._meta = mcpResponse._meta;
+      }
+      return result;
     };
 
     // REST API endpoints - thin wrappers that call existing MCP tool handlers

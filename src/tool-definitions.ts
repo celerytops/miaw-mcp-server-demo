@@ -27,7 +27,10 @@ export const MIAW_TOOLS: any[] = [
       required: ['sessionId']
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    _meta: {}
+    _meta: {
+      'openai/toolInvocation/invoking': 'Talking to Salesforce',
+      'openai/toolInvocation/invoked': 'Salesforce responded'
+    }
   },
   {
     name: 'create_conversation',
@@ -54,7 +57,10 @@ export const MIAW_TOOLS: any[] = [
       required: ['conversationId']
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    _meta: {}
+    _meta: {
+      'openai/toolInvocation/invoking': 'Talking to Salesforce',
+      'openai/toolInvocation/invoked': 'Salesforce responded'
+    }
   },
   {
     name: 'send_message',
@@ -80,7 +86,10 @@ export const MIAW_TOOLS: any[] = [
       }
     },
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-    _meta: {}
+    _meta: {
+      'openai/toolInvocation/invoking': 'Talking to Salesforce',
+      'openai/toolInvocation/invoked': 'Salesforce responded'
+    }
   },
   {
     name: 'list_conversation_entries',
@@ -104,7 +113,10 @@ export const MIAW_TOOLS: any[] = [
       required: ['entries']
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    _meta: {}
+    _meta: {
+      'openai/toolInvocation/invoking': 'Talking to Salesforce',
+      'openai/toolInvocation/invoked': 'Salesforce responded'
+    }
   },
   {
     name: 'get_conversation_routing_status',
@@ -128,7 +140,10 @@ export const MIAW_TOOLS: any[] = [
       required: ['status']
     },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    _meta: {}
+    _meta: {
+      'openai/toolInvocation/invoking': 'Talking to Salesforce',
+      'openai/toolInvocation/invoked': 'Salesforce responded'
+    }
   },
   {
     name: 'close_conversation',
@@ -151,7 +166,10 @@ export const MIAW_TOOLS: any[] = [
       required: ['success']
     },
     annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
-    _meta: {}
+    _meta: {
+      'openai/toolInvocation/invoking': 'Talking to Salesforce',
+      'openai/toolInvocation/invoked': 'Salesforce responded'
+    }
   }
 ];
 
