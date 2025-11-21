@@ -55,10 +55,11 @@ You need three pieces of information from your Salesforce org (easiest to find a
 3. Clone the Git repository by typing in: "git clone https://github.com/skyrmionz/miaw-mcp-server.git" and hit Enter
 4. Type in: "heroku login" and hit Enter → Follow the prompts to authenticate
 6. Make sure you're in the correct directory by checking if you're in "miaw-mcp-server", if not type in: "cd miaw-mcp-server" and hit Enter
-7. Deploy your code to the Heroku app → Type in "git add ." → Type in:
-"git commit -am "(enter your comment here)"" → 
 
 ```
+cd miaw-mcp-server
+git init
+heroku git:remote -a chatgpt-components
 git add .
 git commit -am "(enter your comment here)"
 git push heroku main
