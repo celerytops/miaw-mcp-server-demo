@@ -1,4 +1,4 @@
-# Salesforce MIAW MCP Server for ChatGPT
+# Salesforce MIAW MCP Server
 
 Connect ChatGPT to your Salesforce Enhanced Chat (MIAW - Messaging for In-App and Web) so your AI assistant can seamlessly hand off conversations to Salesforce agents (both Agentforce bots and human agents).
 
@@ -17,16 +17,19 @@ Perfect for when your ChatGPT assistant needs expert help or encounters question
 ### Prerequisites
 
 1. **Salesforce Org** with Enhanced Chat (MIAW) enabled
-   - Service Cloud with Messaging for In-App and Web
-   - Embedded Service Deployment configured
-   - Agent availability (Agentforce or human agents)
+   - Messaging for In-App and Web Channel configured and deployed in Messaging Settings
+   - Embedded Service Deployment configured and published **Make sure it's configured as "Custom Client"**
+   - Omni-channel Routing & Flows configured (Agent - human escalation)
+   - Agentforce Activated with Outbound Omni-channel Connection configured
+   - Live Agent Messaging Channel configured
 
-2. **Heroku Account** (free tier works)
-   - Sign up at [heroku.com](https://heroku.com)
+2. **Heroku Account**
+   - Sign up or sign in at [heroku.com](https://heroku.com)
+   - Create an app to host the MCP Server, name it: "miaw-mcp-server"
 
 3. **ChatGPT Plus or Team**
-   - For MCP Connectors: Developer Mode enabled
-   - For Custom GPT: Ability to create custom GPTs
+   - For MCP Connectors: Developer Mode enabled in Settings
+   - For Custom GPT: Create your own custom GPT
 
 4. **Tools Installed**
    - Git
@@ -34,65 +37,66 @@ Perfect for when your ChatGPT assistant needs expert help or encounters question
 
 ### Step 1: Get Salesforce Credentials
 
-You need three pieces of information from your Salesforce org:
+You need three pieces of information from your Salesforce org (easiest to find all of this information is at Setup → Embedded Service Deployments → Your Deployment → Install Code Snippet → Chat Code Snippet):
 
 1. **SCRT URL** (Salesforce Chat Runtime URL)
-   - Format: `https://scrt01.uengage1.sfdc-yfeipo.svc.sfdcfc.net`
-   - Find in: Setup → Embedded Service Deployments → Your Deployment → View
+   - Format: `https://your-org-url.my.salesforce-scrt.com`
 
 2. **Embedded Service Developer Name**
    - Example: `Target_Messaging_for_In_App_and_Web`
-   - Find in: Setup → Embedded Service Deployments → API Name
 
 3. **Organization ID**
    - Example: `00DHu000000p8j3R`
-   - Find in: Setup → Company Information → Organization ID
 
-### Step 2: Deploy to Heroku
+### Step 2: Deploy to Heroku & Clone from Github
 
-[![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+1. Go to the Heroku App you made → "Deploy" tab → Scroll down to "Deploy using Heroku Git" for all commands
+2. In your favorite IDE, Open a New Terminal
+3. Clone the Git repository by typing in: "git clone https://github.com/skyrmionz/miaw-mcp-server.git" and hit Enter
+4. Type in: "heroku login" and hit Enter → Follow the prompts to authenticate
+6. Make sure you're in the correct directory by checking if you're in "miaw-mcp-server", if not type in: "cd miaw-mcp-server" and hit Enter
+7. Deploy your code to the Heroku app → Type in "git add ." → Type in:
+"git commit -am "(enter your comment here)"" → 
 
-Or manually:
-
-```bash
-# Clone the repository
-git clone https://github.com/skyrmionz/miaw-mcp-server.git
-cd miaw-mcp-server
-
-# Create Heroku app
-heroku create your-app-name
-
-# Set environment variables
-heroku config:set MIAW_SCRT_URL="https://your-scrt-url.net"
-heroku config:set MIAW_ES_DEVELOPER_NAME="Your_ES_Developer_Name"
-heroku config:set MIAW_ORG_ID="00DHu000000p8j3R"
-heroku config:set MCP_TRANSPORT="http"
-heroku config:set PORT="443"
-
-# Deploy
-git push heroku main
-
-# Verify deployment
-heroku open
 ```
+git add .
+git commit -am "(enter your comment here)"
+git push heroku main
+```
+Afterwards, you'll still need to set the Environment Variables in your Heroku App, which you got from earlier:
 
-You should see: `{"status":"ok","message":"MIAW MCP Server",...}`
+1. Go to the Heroku App again → "Settings" tab → Scroll down to "Config Vars" → "Reveal Config Vars" or start adding Environment Variables.
+2. Add these Environment Variables:
+
+```
+Key: MCP_TRANSPORT | Value: http
+Key: MIAW_ES_DEVELOPER_NAME | Value: (Your Embedded Service Deployment API Name)
+Key: MIAW_ORG_ID | Value: (Your Org ID)
+Key: MIAW_SCRT_URL | Value: (Your Org's SCRT URL)
+```
 
 ### Step 3: Connect to ChatGPT
 
-You have two options:
+You have two options to deploy to ChatGPT:
 
-#### Option A: MCP Connector (Simpler, requires Developer Mode)
+#### Option A: Deploy it as a Connector (Simpler, requires Developer Mode, needs approval for tool calls)
 
-1. Go to ChatGPT → Settings → Developer → Apps & Connectors
-2. Click "Add MCP Server"
-3. Enter your Heroku URL: `https://your-app-name.herokuapp.com/mcp`
-4. Done! The tools will appear in your ChatGPT chat
+1. Go to ChatGPT → Profile → Settings → Apps & Connectors → Advanced Settings → Developer Mode "On" → Back
+2. Click "Create" in the top right corner
+3. Add an image for the Icon (Optional)
+4. Name your Connector
+5. Add a Description (how/when should ChatGPT use the Connector?)
+6. Enter your Heroku URL to the "MCP Server URL": `https://your-app-name.herokuapp.com/mcp`
+7. Set Authentication as "No authentication"
+8. Check the "I understand and want to continue..." box
+9. Click the "Create" button
+10. Done! The Connector will be connected to your ChatGPT
+11. Test out the connection!
 
-#### Option B: Custom GPT (More Stable, Recommended)
+#### Option B: Custom GPT (Customize a GPT you can share, executes tool calls without MCP and without approval)
 
-1. Go to ChatGPT → Create a GPT
-2. Configure your GPT with these **Instructions**:
+1. Go to ChatGPT → GPTs → Explore → Create
+2. When editing your GPT, go to the "Configure" tab. Add these **Instructions**:
 
 ```
 You are a helpful shopping assistant for Target. When you encounter questions you cannot answer or when the user requests to speak with an agent, connect them to Salesforce support.
@@ -114,12 +118,13 @@ Exception: On agent transfer (ParticipantChanged event), announce "Transferring 
 You ARE the messenger. Their words become YOUR words. No meta-commentary.
 ```
 
-3. Add **Actions**:
-   - Import schema from: `https://your-app-name.herokuapp.com/openapi-schema.json`
+3. Scroll down to **Actions**:
+   - Click on "Create new action"
+   - Import from URL: `https://your-app-name.herokuapp.com/openapi-schema.json`
    - Authentication: None
-   - Privacy Policy: `https://your-app-name.herokuapp.com/privacy-policy`
+   - Scroll down to Privacy Policy and put in: `https://your-app-name.herokuapp.com/privacy-policy`
 
-4. Save and test!
+4. Click "Update" or "Create" in the upper right hand corner and test!
 
 ## 📖 Available Tools
 
@@ -174,43 +179,6 @@ End the conversation with the agent.
 **Parameters:**
 - `sessionId` (string): Your session ID
 - `conversationId` (string): From `create_conversation`
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Create a `.env` file (for local testing) or set on Heroku:
-
-```bash
-# Salesforce MIAW Configuration (REQUIRED)
-MIAW_SCRT_URL=https://scrt01.uengage1.sfdc-yfeipo.svc.sfdcfc.net
-MIAW_ES_DEVELOPER_NAME=Your_ES_Developer_Name
-MIAW_ORG_ID=00DHu000000p8j3R
-
-# Transport Configuration (REQUIRED for Heroku)
-MCP_TRANSPORT=http
-PORT=443
-```
-
-### Finding Your Salesforce Configuration
-
-#### SCRT URL (Chat Runtime URL)
-1. Go to Setup → Embedded Service Deployments
-2. Click on your deployment
-3. Click "View" next to the deployment
-4. Look for the base URL in the snippet code
-5. Format: `https://scrt##.uengage#.sfdc-******.svc.sfdcfc.net`
-
-#### ES Developer Name (API Name)
-1. Go to Setup → Embedded Service Deployments
-2. Find your deployment in the list
-3. The "API Name" column shows your developer name
-4. Example: `Target_Messaging_for_In_App_and_Web`
-
-#### Organization ID
-1. Go to Setup → Company Information
-2. Copy the "Organization ID"
-3. Format: `00D` followed by 15 characters
 
 ## 🚀 How It Works
 
