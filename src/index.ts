@@ -1055,13 +1055,15 @@ class MIAWMCPServer {
           console.error('Timeout (25s). Most recent still Automated Process or no messages.');
         }
         
-        // Get role info from most recent message
+        // Get role info from most recent message (excluding System and Automated Process)
         const allEntries: any[] = entriesResult.entries || [];
         const messages = allEntries
           .filter((e: any) => e.entryType === 'Message')
           .filter((e: any) => {
             const sender = e.senderDisplayName || '';
-            return !sender.includes('Automated Process');
+            const role = e.sender?.role || e.senderRole || '';
+            // Exclude Automated Process AND System roles
+            return !sender.includes('Automated Process') && role !== 'System';
           })
           .sort((a: any, b: any) => (b.transcriptedTimestamp || 0) - (a.transcriptedTimestamp || 0));
         
@@ -1069,18 +1071,21 @@ class MIAWMCPServer {
         const senderRole = mostRecentMessage?.sender?.role || mostRecentMessage?.senderRole || 'Unknown';
         const senderDisplayName = mostRecentMessage?.senderDisplayName || 'Unknown';
         
-        console.error(`Most recent message from: ${senderDisplayName} (role: ${senderRole})`);
+        console.error(`Most recent non-System message from: ${senderDisplayName} (role: ${senderRole})`);
         
         // Add role info to help ChatGPT decide whether to show chat widget
+        // isLiveAgent is TRUE only when role is "Agent" (not Chatbot, not System)
+        const isLiveAgent = senderRole === 'Agent';
+        
         result = {
           ...entriesResult,
           _roleInfo: {
             mostRecentSenderRole: senderRole,
             mostRecentSenderName: senderDisplayName,
-            isLiveAgent: senderRole === 'Agent',
-            instruction: senderRole === 'Agent' 
-              ? `LIVE AGENT DETECTED: Call show_salesforce_chat with agentName="${senderDisplayName}" to show the chat widget.`
-              : `CHATBOT: Display the message text as your response. Do NOT call show_salesforce_chat.`
+            isLiveAgent: isLiveAgent,
+            instruction: isLiveAgent 
+              ? `LIVE AGENT "${senderDisplayName}" HAS JOINED. Call show_salesforce_chat with agentName="${senderDisplayName}" NOW to show the chat widget.`
+              : `Role is "${senderRole}" (not Agent). Display the message as your response. Keep polling list_conversation_entries until role="Agent".`
           }
         };
         break;

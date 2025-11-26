@@ -94,7 +94,7 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'list_conversation_entries',
     title: 'List Conversation Messages',
-    description: 'Get messages from chatbots or live agents. Check the most recent message sender.role: if role="Chatbot", display the message as your response. If role="Agent", a live agent has joined - call show_salesforce_chat with agentName=senderDisplayName to show the chat widget. ONLY call show_salesforce_chat when you detect role changed from Chatbot to Agent.',
+    description: 'Get messages. Check _roleInfo.mostRecentSenderRole in response. IGNORE role="System". If role="Chatbot", display the message. If role="Agent", call show_salesforce_chat with agentName from _roleInfo.mostRecentSenderName. Keep polling until you see role="Agent".',
     inputSchema: {
       type: 'object',
       properties: {
@@ -174,7 +174,7 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'show_salesforce_chat',
     title: 'Transfer to Live Agent Chat',
-    description: 'ONLY call this when list_conversation_entries shows a ROLE CHANGE from "Chatbot" to "Agent". Check the most recent message sender.role - if it changed from "Chatbot" to "Agent", THEN call this tool to show the live chat interface. DO NOT call this immediately after create_conversation. Wait for list_conversation_entries to show role="Agent" first. Pass the agentName from senderDisplayName.',
+    description: 'ONLY call when list_conversation_entries returns _roleInfo.isLiveAgent=true (role="Agent"). DO NOT call if role="Chatbot" or role="System". Wait and keep polling list_conversation_entries until _roleInfo.isLiveAgent=true, then call this with agentName from _roleInfo.mostRecentSenderName.',
     inputSchema: {
       type: 'object',
       properties: {
