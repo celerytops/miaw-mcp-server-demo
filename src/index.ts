@@ -512,7 +512,12 @@ class MIAWMCPServer {
 
     // Read resource (serve widget HTML)
     this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      console.error('ReadResource request received for:', request.params.uri);
       if (request.params.uri === salesforceChatWidget.templateUri) {
+        if (!salesforceChatWidget.html) {
+          throw new Error('Widget HTML not loaded. Check that widgets/salesforce-chat.html exists.');
+        }
+        console.error('Serving widget HTML (' + salesforceChatWidget.html.length + ' bytes)');
         return {
           contents: [
             {
@@ -1224,7 +1229,12 @@ class MIAWMCPServer {
 
     // Read resource (serve widget HTML)
     server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      console.error('SSE ReadResource request received for:', request.params.uri);
       if (request.params.uri === salesforceChatWidget.templateUri) {
+        if (!salesforceChatWidget.html) {
+          throw new Error('Widget HTML not loaded. Check that widgets/salesforce-chat.html exists.');
+        }
+        console.error('SSE Serving widget HTML (' + salesforceChatWidget.html.length + ' bytes)');
         return {
           contents: [
             {
