@@ -453,8 +453,8 @@ class MIAWMCPServer {
       },
       {
         capabilities: {
-          tools: {},
           resources: {},
+          tools: {},
         },
       }
     );
@@ -492,12 +492,7 @@ class MIAWMCPServer {
    * Setup MCP request handlers
    */
   private setupHandlers() {
-    // List available tools
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: this.getTools(),
-    }));
-
-    // List resources (for widgets)
+    // List resources (for widgets) - must be first
     this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
       resources: [
         {
@@ -543,6 +538,11 @@ class MIAWMCPServer {
           _meta: widgetDescriptorMeta(salesforceChatWidget)
         }
       ]
+    }));
+
+    // List available tools
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
+      tools: this.getTools(),
     }));
 
     // Handle tool calls
@@ -1203,17 +1203,13 @@ class MIAWMCPServer {
       },
       {
         capabilities: {
-          tools: {},
           resources: {},
+          tools: {},
         },
       }
     );
 
-    // Setup handlers for this instance
-    server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: this.getTools(),
-    }));
-
+    // Setup handlers for this instance - resources first
     // List resources (for widgets)
     server.setRequestHandler(ListResourcesRequestSchema, async () => ({
       resources: [
@@ -1262,6 +1258,12 @@ class MIAWMCPServer {
       ]
     }));
 
+    // List tools
+    server.setRequestHandler(ListToolsRequestSchema, async () => ({
+      tools: this.getTools(),
+    }));
+
+    // Handle tool calls
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
       try {
         const client = this.initializeClient();
