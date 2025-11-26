@@ -1556,50 +1556,74 @@ class MIAWMCPServer {
       }
     });
 
-    // Store active MCP server instances (renamed to avoid shadowing global sessions map)
-    const mcpSessions = new Map<string, Server>();
+    // Store active MCP server instances and transports (following Pizzaz pattern)
+    const mcpSessions = new Map<string, { server: Server; transport: SSEServerTransport }>();
 
-    // MCP endpoint - GET establishes SSE connection
+    // MCP endpoint - GET establishes SSE connection (ChatGPT connector)
     app.get('/mcp', async (req, res) => {
       console.error(`MCP GET (SSE) request from ${req.ip || 'unknown'}`);
       console.error(`User-Agent: ${req.headers['user-agent'] || 'unknown'}`);
       
       try {
-        // Generate session ID
-        const sessionId = Math.random().toString(36).substring(7);
-        
         // Create a new server instance for this session
         const serverInstance = this.createServerInstance();
-        mcpSessions.set(sessionId, serverInstance);
         
-        // Create SSE transport with message endpoint
-        const transport = new SSEServerTransport(`/mcp`, res);
+        // Create SSE transport - first param is the POST message endpoint path
+        const transport = new SSEServerTransport('/mcp/messages', res);
+        const sessionId = transport.sessionId; // Transport generates its own session ID
+        
+        // Store both server and transport (needed for POST message handling)
+        mcpSessions.set(sessionId, { server: serverInstance, transport });
         
         console.error(`Session ${sessionId}: Connecting MCP server instance...`);
+        
+        // Set up transport event handlers
+        transport.onclose = async () => {
+          console.error(`Session ${sessionId}: Transport closed`);
+          mcpSessions.delete(sessionId);
+          // Don't call server.close() here to avoid circular reference
+        };
+
+        transport.onerror = (error: any) => {
+          console.error(`Session ${sessionId}: Transport error:`, error);
+        };
+        
+        // Connect server to transport
         await serverInstance.connect(transport);
         console.error(`Session ${sessionId}: MCP server connected successfully`);
         
-        // Clean up on close
-        req.on('close', () => {
-          console.error(`Session ${sessionId}: Connection closed by client`);
-          mcpSessions.delete(sessionId);
-        });
-
-        req.on('error', (err: any) => {
-          console.error(`Session ${sessionId}: Connection error:`, err);
-          mcpSessions.delete(sessionId);
-        });
       } catch (error) {
         console.error('Error establishing SSE connection:', error);
         if (!res.headersSent) {
-          res.status(500).json({ 
-            jsonrpc: '2.0',
-            error: {
-              code: -32603,
-              message: 'Internal error: Failed to establish SSE connection',
-              data: error instanceof Error ? error.message : String(error)
-            }
-          });
+          res.status(500).send('Failed to establish SSE connection');
+        }
+      }
+    });
+
+    // POST /mcp/messages - handles SSE messages from ChatGPT (following Pizzaz pattern)
+    app.post('/mcp/messages', async (req, res) => {
+      const sessionId = req.query.sessionId as string;
+      
+      console.error(`MCP POST message for session: ${sessionId}`);
+      
+      if (!sessionId) {
+        return res.status(400).send('Missing sessionId query parameter');
+      }
+      
+      const session = mcpSessions.get(sessionId);
+      
+      if (!session) {
+        console.error(`Session ${sessionId} not found. Active sessions:`, Array.from(mcpSessions.keys()));
+        return res.status(404).send('Unknown session');
+      }
+      
+      try {
+        // Let the transport handle the POST message
+        await session.transport.handlePostMessage(req, res);
+      } catch (error) {
+        console.error(`Failed to process message for session ${sessionId}:`, error);
+        if (!res.headersSent) {
+          res.status(500).send('Failed to process message');
         }
       }
     });
