@@ -10,13 +10,18 @@
       box-sizing: border-box;
     }
     
+    html, body {
+      height: 500px;
+      min-height: 500px;
+      max-height: 500px;
+      overflow: hidden;
+    }
+    
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
       background: #f5f5f5;
-      padding: 16px;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
+      padding: 0;
+      height: 500px;
     }
     
     body.dark-mode {
@@ -25,12 +30,10 @@
     }
     
     .chat-container {
-      max-width: 600px;
       width: 100%;
-      margin: 0 auto;
+      height: 500px;
       display: flex;
       flex-direction: column;
-      height: 100%;
       background: white;
       border-radius: 12px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
@@ -90,6 +93,10 @@
       animation: pulse 2s infinite;
     }
     
+    .status-indicator.loading {
+      background: #ff9800;
+    }
+    
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
@@ -103,10 +110,43 @@
       flex-direction: column;
       gap: 16px;
       background: #f9f9f9;
+      min-height: 0;
+      height: 340px;
     }
     
     body.dark-mode .chat-messages {
       background: #1a1a1a;
+    }
+    
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 16px;
+    }
+    
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(0, 112, 210, 0.2);
+      border-top-color: #0070d2;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    body.dark-mode .loading-text {
+      color: #999;
     }
     
     .message {
@@ -274,7 +314,8 @@
       border-radius: 24px;
       font-size: 14px;
       resize: none;
-      max-height: 120px;
+      max-height: 80px;
+      min-height: 44px;
       font-family: inherit;
       background: #f9f9f9;
       color: #333;
@@ -289,6 +330,11 @@
     .chat-input:focus {
       outline: none;
       border-color: #0070d2;
+    }
+    
+    .chat-input:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
     
     .send-button {
@@ -320,6 +366,20 @@
       width: 20px;
       height: 20px;
     }
+    
+    .error-message {
+      background: #ffebee;
+      color: #c62828;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin: 10px;
+    }
+    
+    body.dark-mode .error-message {
+      background: #3e1a1a;
+      color: #ef9a9a;
+    }
   </style>
 </head>
 <body>
@@ -327,16 +387,19 @@
     <div class="chat-header">
       <div class="salesforce-logo">SF</div>
       <div class="header-info">
-        <div class="header-title" id="agent-name">Salesforce Agent</div>
+        <div class="header-title" id="agent-name">Loading...</div>
         <div class="header-status">
-          <span class="status-indicator"></span>
-          <span id="status-text">Connected</span>
+          <span class="status-indicator loading" id="status-indicator"></span>
+          <span id="status-text">Connecting...</span>
         </div>
       </div>
     </div>
     
     <div class="chat-messages" id="messages-container">
-      <!-- Messages will be inserted here -->
+      <div class="loading-container" id="loading-container">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Connecting to agent...</div>
+      </div>
     </div>
     
     <div class="chat-input-container">
@@ -346,9 +409,10 @@
           id="message-input" 
           placeholder="Type your message..."
           rows="1"
+          disabled
           onkeydown="handleKeyDown(event)"
         ></textarea>
-        <button class="send-button" id="send-button" onclick="sendMessage()">
+        <button class="send-button" id="send-button" onclick="sendMessage()" disabled>
           <svg class="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
           </svg>
@@ -364,57 +428,182 @@
       document.body.classList.add('dark-mode');
     }
     
+    // State
     let sessionId = '';
     let conversationId = '';
     let serverUrl = '';
-    let pollInterval;
+    let agentName = 'Salesforce Agent';
+    let pollInterval = null;
+    let displayedMessageIds = new Set();
+    let isInitialized = false;
     let lastMessageTimestamp = 0;
     
+    // Initialize from tool output
     function initialize() {
       const toolOutput = window.openai?.toolOutput || {};
+      
       sessionId = toolOutput.sessionId || '';
       conversationId = toolOutput.conversationId || '';
       serverUrl = toolOutput.serverUrl || 'https://miaw-mcp-server-6df009bc852c.herokuapp.com';
+      agentName = toolOutput.agentName || 'Salesforce Agent';
       
-      const initialMessages = toolOutput.messages || [];
-      const agentName = toolOutput.agentName || 'Salesforce Agent';
+      console.log('Chat widget initialized:', { sessionId, conversationId, serverUrl, agentName });
       
-      console.log('Salesforce Chat initialized:', { sessionId, conversationId, messageCount: initialMessages.length });
-      
-      // Set agent name
+      // Set agent name in header
       document.getElementById('agent-name').textContent = agentName;
       
-      // Render initial messages
-      if (initialMessages.length > 0) {
-        initialMessages.forEach(msg => addMessage(msg));
+      if (!sessionId || !conversationId) {
+        showError('Missing session or conversation ID');
+        return;
       }
       
-      // Start polling for new messages
-      startPolling();
-      
-      // Auto-resize textarea
-      const input = document.getElementById('message-input');
-      input.addEventListener('input', autoResize);
+      // Start loading messages
+      loadMessages();
     }
     
-    function addMessage(message) {
+    function showError(message) {
       const container = document.getElementById('messages-container');
-      const isUser = message.sender === 'user' || message.senderType === 'EndUser';
-      const sender = message.senderName || (isUser ? 'You' : message.sender || 'Agent');
-      const text = message.text || message.message || '';
-      const timestamp = message.timestamp || Date.now();
+      container.innerHTML = `<div class="error-message">${message}</div>`;
+    }
+    
+    function setConnected() {
+      const indicator = document.getElementById('status-indicator');
+      const statusText = document.getElementById('status-text');
+      indicator.classList.remove('loading');
+      statusText.textContent = 'Connected';
       
-      // Track last message timestamp
-      if (timestamp > lastMessageTimestamp) {
-        lastMessageTimestamp = timestamp;
+      // Enable input
+      document.getElementById('message-input').disabled = false;
+      document.getElementById('send-button').disabled = false;
+      
+      isInitialized = true;
+    }
+    
+    async function loadMessages() {
+      try {
+        const response = await fetch(`${serverUrl}/api/list-conversation-entries`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, conversationId })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load messages: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const entries = data.entries || [];
+        
+        // Hide loading container
+        const loadingContainer = document.getElementById('loading-container');
+        if (loadingContainer) {
+          loadingContainer.style.display = 'none';
+        }
+        
+        // Filter and sort messages
+        const messages = entries
+          .filter(e => e.entryType === 'Message')
+          .filter(e => {
+            const sender = e.senderDisplayName || '';
+            return !sender.includes('Automated Process');
+          })
+          .sort((a, b) => (a.transcriptedTimestamp || 0) - (b.transcriptedTimestamp || 0));
+        
+        // Render new messages
+        messages.forEach(msg => {
+          const msgId = msg.identifier?.conversationEntryId || msg.transcriptedTimestamp;
+          if (!displayedMessageIds.has(msgId)) {
+            displayedMessageIds.add(msgId);
+            renderMessage(msg);
+            
+            // Track timestamp
+            const ts = msg.transcriptedTimestamp || 0;
+            if (ts > lastMessageTimestamp) {
+              lastMessageTimestamp = ts;
+            }
+          }
+        });
+        
+        // Mark as connected
+        setConnected();
+        
+        // Start polling
+        if (!pollInterval) {
+          pollInterval = setInterval(pollForMessages, 2000);
+        }
+        
+      } catch (error) {
+        console.error('Error loading messages:', error);
+        showError('Failed to connect to chat. Please try again.');
       }
+    }
+    
+    async function pollForMessages() {
+      if (!sessionId || !conversationId) return;
+      
+      try {
+        const response = await fetch(`${serverUrl}/api/list-conversation-entries`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, conversationId })
+        });
+        
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        const entries = data.entries || [];
+        
+        // Filter and sort messages
+        const messages = entries
+          .filter(e => e.entryType === 'Message')
+          .filter(e => {
+            const sender = e.senderDisplayName || '';
+            return !sender.includes('Automated Process');
+          })
+          .sort((a, b) => (a.transcriptedTimestamp || 0) - (b.transcriptedTimestamp || 0));
+        
+        // Render new messages
+        let hasNew = false;
+        messages.forEach(msg => {
+          const msgId = msg.identifier?.conversationEntryId || msg.transcriptedTimestamp;
+          if (!displayedMessageIds.has(msgId)) {
+            displayedMessageIds.add(msgId);
+            renderMessage(msg);
+            hasNew = true;
+            
+            // Track timestamp
+            const ts = msg.transcriptedTimestamp || 0;
+            if (ts > lastMessageTimestamp) {
+              lastMessageTimestamp = ts;
+            }
+          }
+        });
+        
+        if (hasNew) {
+          hideTypingIndicator();
+        }
+        
+      } catch (error) {
+        console.error('Error polling messages:', error);
+      }
+    }
+    
+    function renderMessage(msg) {
+      const container = document.getElementById('messages-container');
+      const senderDisplayName = msg.senderDisplayName || 'Agent';
+      const senderRole = msg.sender?.role || msg.senderRole || 'Agent';
+      const isUser = senderRole === 'EndUser';
+      const text = msg.messageContent?.staticContent?.text || '';
+      const timestamp = msg.transcriptedTimestamp || Date.now();
+      
+      if (!text.trim()) return;
       
       const messageEl = document.createElement('div');
       messageEl.className = `message ${isUser ? 'user' : 'agent'}`;
       messageEl.innerHTML = `
-        <div class="message-avatar">${sender.charAt(0).toUpperCase()}</div>
+        <div class="message-avatar">${(isUser ? 'You' : senderDisplayName).charAt(0).toUpperCase()}</div>
         <div class="message-content">
-          <div class="message-sender">${sender}</div>
+          <div class="message-sender">${isUser ? 'You' : senderDisplayName}</div>
           <div class="message-bubble">${escapeHtml(text)}</div>
           <div class="message-time">${formatTime(timestamp)}</div>
         </div>
@@ -435,11 +624,6 @@
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
     
-    function autoResize(e) {
-      e.target.style.height = 'auto';
-      e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-    }
-    
     function handleKeyDown(event) {
       if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
@@ -454,52 +638,64 @@
       
       if (!text || !sessionId || !conversationId) return;
       
-      // Disable input
+      // Disable input while sending
       input.disabled = true;
       sendButton.disabled = true;
       
-      // Add user message to UI
-      addMessage({
-        sender: 'user',
-        senderType: 'EndUser',
-        senderName: 'You',
-        text: text,
-        timestamp: Date.now()
-      });
+      // Add user message to UI immediately
+      const userMsgId = 'user_' + Date.now();
+      displayedMessageIds.add(userMsgId);
+      
+      const container = document.getElementById('messages-container');
+      const messageEl = document.createElement('div');
+      messageEl.className = 'message user';
+      messageEl.innerHTML = `
+        <div class="message-avatar">Y</div>
+        <div class="message-content">
+          <div class="message-sender">You</div>
+          <div class="message-bubble">${escapeHtml(text)}</div>
+          <div class="message-time">${formatTime(Date.now())}</div>
+        </div>
+      `;
+      container.appendChild(messageEl);
+      container.scrollTop = container.scrollHeight;
       
       // Clear input
       input.value = '';
-      input.style.height = 'auto';
       
       // Show typing indicator
       showTypingIndicator();
       
       try {
-        // Send message to Salesforce via REST API
         const response = await fetch(`${serverUrl}/api/send-message`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            sessionId: sessionId,
-            conversationId: conversationId,
-            text: text
+            sessionId,
+            conversationId,
+            text
           })
         });
         
         if (!response.ok) {
-          throw new Error('Failed to send message');
+          throw new Error(`Failed to send message: ${response.status}`);
         }
         
         console.log('Message sent successfully');
         
-        // Immediately poll for response
-        await pollForNewMessages();
+        // Poll immediately for response
+        setTimeout(pollForMessages, 500);
+        
       } catch (error) {
         console.error('Error sending message:', error);
-        alert('Failed to send message. Please try again.');
         hideTypingIndicator();
+        
+        // Show error in chat
+        const errorEl = document.createElement('div');
+        errorEl.className = 'error-message';
+        errorEl.textContent = 'Failed to send message. Please try again.';
+        container.appendChild(errorEl);
+        container.scrollTop = container.scrollHeight;
       } finally {
         // Re-enable input
         input.disabled = false;
@@ -517,7 +713,7 @@
         indicator.id = 'typing-indicator';
         indicator.className = 'message agent';
         indicator.innerHTML = `
-          <div class="message-avatar">A</div>
+          <div class="message-avatar">${agentName.charAt(0).toUpperCase()}</div>
           <div class="message-content">
             <div class="typing-indicator active">
               <div class="typing-dots">
@@ -539,78 +735,11 @@
     function hideTypingIndicator() {
       const indicator = document.getElementById('typing-indicator');
       if (indicator) {
-        indicator.style.display = 'none';
+        indicator.remove();
       }
     }
     
-    async function pollForNewMessages() {
-      if (!sessionId || !conversationId) return;
-      
-      try {
-        const response = await fetch(`${serverUrl}/api/list-conversation-entries`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            sessionId: sessionId,
-            conversationId: conversationId
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch messages');
-        }
-        
-        const data = await response.json();
-        const entries = data.entries || [];
-        
-        // Filter to only messages, sorted by timestamp
-        const messages = entries
-          .filter(e => e.entryType === 'Message')
-          .sort((a, b) => (a.transcriptedTimestamp || 0) - (b.transcriptedTimestamp || 0));
-        
-        // Add any new messages that are newer than our last tracked timestamp
-        let hasNewMessages = false;
-        messages.forEach(msg => {
-          const msgTime = msg.transcriptedTimestamp || 0;
-          if (msgTime > lastMessageTimestamp) {
-            const sender = msg.senderDisplayName || 'Agent';
-            const isBot = sender.includes('Chatbot');
-            const isAutomated = sender.includes('Automated Process');
-            const isEndUser = msg.senderRole === 'EndUser';
-            
-            // Only show non-automated messages
-            if (!isAutomated) {
-              addMessage({
-                sender: isEndUser ? 'user' : sender,
-                senderType: msg.senderRole,
-                senderName: isEndUser ? 'You' : sender,
-                text: msg.messageContent?.staticContent?.text || '',
-                timestamp: msgTime
-              });
-              hasNewMessages = true;
-            }
-          }
-        });
-        
-        if (hasNewMessages) {
-          hideTypingIndicator();
-        }
-      } catch (error) {
-        console.error('Error polling messages:', error);
-      }
-    }
-    
-    function startPolling() {
-      // Poll every 2 seconds for new messages
-      pollInterval = setInterval(pollForNewMessages, 2000);
-      
-      // Initial poll
-      pollForNewMessages();
-    }
-    
-    // Cleanup on page unload
+    // Cleanup on unload
     window.addEventListener('beforeunload', () => {
       if (pollInterval) {
         clearInterval(pollInterval);

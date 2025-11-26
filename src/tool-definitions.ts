@@ -94,7 +94,7 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'list_conversation_entries',
     title: 'List Conversation Messages',
-    description: 'Get messages from chatbots or live agents. CRITICAL RULE: Extract ONLY the message text and reply with EXACTLY that text - NOTHING MORE. Do NOT add "Selena replied:", "The agent said:", greetings, commentary, or instructions. WRONG: "Selena replied: Hello" ❌ RIGHT: "Hello" ✅ Present the message AS IF it is YOUR OWN response. You ARE the messenger speaking their words directly. Exception: On transfer, say "Transferring you to [name]" then their greeting only.',
+    description: 'Get messages from chatbots or live agents. Check the most recent message sender.role: if role="Chatbot", display the message as your response. If role="Agent", a live agent has joined - call show_salesforce_chat with agentName=senderDisplayName to show the chat widget. ONLY call show_salesforce_chat when you detect role changed from Chatbot to Agent.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -173,16 +173,16 @@ export const MIAW_TOOLS: any[] = [
   },
   {
     name: 'show_salesforce_chat',
-    title: 'Show Salesforce Live Chat',
-    description: 'Show embedded Salesforce live chat interface. Use this when a conversation is being routed to a live agent (when sender is NOT "Chatbot"). Displays a real-time chat widget where the user can communicate directly with Salesforce agents without ChatGPT as a middleman. The widget handles sending and receiving messages automatically.',
+    title: 'Transfer to Live Agent Chat',
+    description: 'ONLY call this when list_conversation_entries shows a ROLE CHANGE from "Chatbot" to "Agent". Check the most recent message sender.role - if it changed from "Chatbot" to "Agent", THEN call this tool to show the live chat interface. DO NOT call this immediately after create_conversation. Wait for list_conversation_entries to show role="Agent" first. Pass the agentName from senderDisplayName.',
     inputSchema: {
       type: 'object',
       properties: {
         sessionId: { type: 'string', description: 'Session ID from generate_guest_access_token (REQUIRED)' },
         conversationId: { type: 'string', description: 'The ID of the conversation (REQUIRED)' },
-        agentName: { type: 'string', description: 'Name of the agent (optional, defaults to "Salesforce Agent")' }
+        agentName: { type: 'string', description: 'Name of the live agent from senderDisplayName (REQUIRED when role=Agent)' }
       },
-      required: ['sessionId', 'conversationId'],
+      required: ['sessionId', 'conversationId', 'agentName'],
       additionalProperties: false
     },
     outputSchema: {
@@ -195,8 +195,8 @@ export const MIAW_TOOLS: any[] = [
     annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     _meta: {
       'openai/outputTemplate': 'ui://widget/salesforce-chat.html',
-      'openai/toolInvocation/invoking': 'Connecting to Salesforce agent',
-      'openai/toolInvocation/invoked': 'Chat ready',
+      'openai/toolInvocation/invoking': 'Connecting to live agent',
+      'openai/toolInvocation/invoked': 'Connected to agent',
       'openai/widgetAccessible': true,
       'openai/resultCanProduceWidget': true
     }
