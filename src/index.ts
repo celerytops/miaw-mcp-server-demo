@@ -1029,7 +1029,8 @@ class MIAWMCPServer {
           const apiTime = Date.now() - pollStart;
           console.error(`API call took ${apiTime}ms`);
           
-          const allEntries: any[] = entriesResult.entries || [];
+          // Salesforce returns conversationEntries (not entries)
+          const allEntries: any[] = entriesResult.conversationEntries || entriesResult.entries || [];
           
           // Find most recent message by timestamp
           const messages = allEntries
@@ -1059,8 +1060,9 @@ class MIAWMCPServer {
         }
         
         // Get role info from most recent message (excluding System and Automated Process)
-        const allEntries: any[] = entriesResult.entries || [];
-        const messages = allEntries
+        // Salesforce returns conversationEntries (not entries)
+        const allEntriesForRole: any[] = entriesResult.conversationEntries || entriesResult.entries || [];
+        const messages = allEntriesForRole
           .filter((e: any) => e.entryType === 'Message')
           .filter((e: any) => {
             const sender = e.senderDisplayName || '';
@@ -1081,17 +1083,19 @@ class MIAWMCPServer {
         const isLiveAgent = senderRole === 'Agent';
         
         // Filter entries to ONLY include Bot/Agent messages - exclude Automated Process and System
-        const filteredEntries = (entriesResult.entries || []).filter((e: any) => {
-          if (e.entryType !== 'Message') return true; // Keep non-message entries
+        const rawEntries = entriesResult.conversationEntries || entriesResult.entries || [];
+        const filteredEntries = rawEntries.filter((e: any) => {
+          if (e.entryType !== 'Message') return false; // ONLY keep Message entries for ChatGPT
           const sender = e.senderDisplayName || '';
           const role = e.sender?.role || e.senderRole || '';
           // Exclude Automated Process AND System roles
           return !sender.includes('Automated Process') && role !== 'System';
         });
         
+        // Return ONLY filtered entries - remove raw conversationEntries to prevent ChatGPT reading them
         result = {
-          ...entriesResult,
-          entries: filteredEntries, // Return filtered entries, NOT all entries
+          entries: filteredEntries, // Return ONLY filtered messages
+          continuationToken: entriesResult.continuationToken,
           _roleInfo: {
             mostRecentSenderRole: senderRole,
             mostRecentSenderName: senderDisplayName,
@@ -1160,8 +1164,10 @@ class MIAWMCPServer {
         }
         
         // Get current conversation entries to pass to the widget
-        const chatEntries = await client.listConversationEntries(args.conversationId);
-        const allMessages = (chatEntries.entries || [])
+        const chatEntries: any = await client.listConversationEntries(args.conversationId);
+        // Salesforce returns conversationEntries (not entries)
+        const rawChatEntries = chatEntries.conversationEntries || chatEntries.entries || [];
+        const allMessages = rawChatEntries
           .filter((e: any) => e.entryType === 'Message')
           .filter((e: any) => {
             const sender = e.senderDisplayName || '';
