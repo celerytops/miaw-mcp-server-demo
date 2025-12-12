@@ -69,7 +69,8 @@ try {
   console.error('⚠ Warning: Could not load widget HTML:', error);
 }
 
-// Widget metadata helpers
+// Widget metadata helpers - follows OpenAI Apps SDK spec
+// https://developers.openai.com/apps-sdk/build/mcp-server/#content-security-policy-csp
 function widgetDescriptorMeta(widget: typeof salesforceChatWidget) {
   return {
     'openai/outputTemplate': widget.templateUri,
@@ -77,9 +78,20 @@ function widgetDescriptorMeta(widget: typeof salesforceChatWidget) {
     'openai/toolInvocation/invoked': widget.invoked,
     'openai/widgetAccessible': true,
     'openai/resultCanProduceWidget': true,
-    // CSP and domain required for widget submission
-    'openai/csp': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://miaw-mcp-server-6df009bc852c.herokuapp.com https://*.salesforce.com;",
-    'openai/domain': 'miaw-mcp-server-6df009bc852c.herokuapp.com'
+    // CSP - required for app submission
+    'openai/widgetCSP': {
+      connect_domains: [
+        'https://miaw-mcp-server-6df009bc852c.herokuapp.com',
+        'https://*.salesforce.com'
+      ],
+      resource_domains: [
+        'https://miaw-mcp-server-6df009bc852c.herokuapp.com'
+      ]
+    },
+    // Widget domain - required for app submission
+    'openai/widgetDomain': 'miaw-mcp-server-6df009bc852c.herokuapp.com',
+    // Widget description
+    'openai/widgetDescription': 'Real-time chat interface for communicating with Salesforce live agents.'
   };
 }
 
