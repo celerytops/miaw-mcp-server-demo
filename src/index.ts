@@ -1054,16 +1054,28 @@ class MIAWMCPServer {
           // Salesforce returns conversationEntries (not entries)
           const allEntries: any[] = entriesResult.conversationEntries || entriesResult.entries || [];
           
-          // Find most recent VALID message (exclude System role and Automated Process)
+          // Find most recent VALID message (strict filtering)
           const validMessages = allEntries
             .filter((e: any) => e.entryType === 'Message')
             .filter((e: any) => {
               const sender = e.senderDisplayName || '';
               const role = e.sender?.role || '';
-              // ONLY accept Chatbot, Agent, or EndUser - reject System and Automated Process
+              const messageReason = e.entryPayload?.messageReason || '';
+              const messageText = e.entryPayload?.abstractMessage?.staticContent?.text || '';
+              
+              // REJECT: System role, Automated Process, known system messages
+              const isSystemRole = role === 'System' || role === '' || !role;
+              const isAutomatedProcess = sender.includes('Automated Process');
+              const isAutomatedResponse = messageReason === 'AutomatedResponse';
+              const isSystemMessage = messageText.includes('One moment while I connect you') ||
+                                      messageText.includes('connect you to the next available') ||
+                                      messageText.includes('thanks for reaching out') ||
+                                      messageText.includes('We will be with you shortly');
+              
+              // ONLY accept specific valid roles
               const isValidRole = role === 'Chatbot' || role === 'Agent' || role === 'EndUser';
-              const isNotAutomated = !sender.includes('Automated Process');
-              return isValidRole && isNotAutomated;
+              
+              return isValidRole && !isSystemRole && !isAutomatedProcess && !isAutomatedResponse && !isSystemMessage;
             })
             .sort((a: any, b: any) => (b.transcriptedTimestamp || 0) - (a.transcriptedTimestamp || 0));
           
@@ -1094,16 +1106,28 @@ class MIAWMCPServer {
           console.error('Timeout (25s). No valid Chatbot/Agent message found.');
         }
         
-        // Get role info from most recent message (excluding System and Automated Process)
+        // Get role info from most recent VALID message (strict filtering)
         // Salesforce returns conversationEntries (not entries)
         const allEntriesForRole: any[] = entriesResult.conversationEntries || entriesResult.entries || [];
         const messages = allEntriesForRole
           .filter((e: any) => e.entryType === 'Message')
           .filter((e: any) => {
             const sender = e.senderDisplayName || '';
-            const role = e.sender?.role || e.senderRole || '';
-            // Exclude Automated Process AND System roles
-            return !sender.includes('Automated Process') && role !== 'System';
+            const role = e.sender?.role || '';
+            const messageReason = e.entryPayload?.messageReason || '';
+            const messageText = e.entryPayload?.abstractMessage?.staticContent?.text || '';
+            
+            // Same strict filtering as above
+            const isSystemRole = role === 'System' || role === '' || !role;
+            const isAutomatedProcess = sender.includes('Automated Process');
+            const isAutomatedResponse = messageReason === 'AutomatedResponse';
+            const isSystemMessage = messageText.includes('One moment while I connect you') ||
+                                    messageText.includes('connect you to the next available') ||
+                                    messageText.includes('thanks for reaching out') ||
+                                    messageText.includes('We will be with you shortly');
+            const isValidRole = role === 'Chatbot' || role === 'Agent' || role === 'EndUser';
+            
+            return isValidRole && !isSystemRole && !isAutomatedProcess && !isAutomatedResponse && !isSystemMessage;
           })
           .sort((a: any, b: any) => (b.transcriptedTimestamp || 0) - (a.transcriptedTimestamp || 0));
         
@@ -1124,14 +1148,24 @@ class MIAWMCPServer {
           const sender = e.senderDisplayName || '';
           const role = e.sender?.role || '';
           const messageReason = e.entryPayload?.messageReason || e.messageReason || '';
+          const messageText = e.entryPayload?.abstractMessage?.staticContent?.text || '';
           
-          // ONLY accept specific valid roles - reject everything else
+          // REJECT LIST: System role, Automated Process, AutomatedResponse, known system messages
+          const isSystemRole = role === 'System' || role === '' || !role;
+          const isAutomatedProcess = sender.includes('Automated Process') || sender.includes('automated');
+          const isAutomatedResponse = messageReason === 'AutomatedResponse';
+          const isSystemMessage = messageText.includes('One moment while I connect you') ||
+                                  messageText.includes('connect you to the next available') ||
+                                  messageText.includes('thanks for reaching out') ||
+                                  messageText.includes('We will be with you shortly');
+          
+          // ONLY accept specific valid roles
           const isValidRole = role === 'Chatbot' || role === 'Agent' || role === 'EndUser';
-          // Also reject Automated Process by name and AutomatedResponse messages
-          const isNotAutomated = !sender.includes('Automated Process') && messageReason !== 'AutomatedResponse';
           
-          console.error(`Filter check: sender="${sender}", role="${role}", messageReason="${messageReason}", valid=${isValidRole && isNotAutomated}`);
-          return isValidRole && isNotAutomated;
+          const shouldReject = isSystemRole || isAutomatedProcess || isAutomatedResponse || isSystemMessage || !isValidRole;
+          
+          console.error(`Filter: sender="${sender}", role="${role}", reason="${messageReason}", text="${messageText.substring(0, 50)}...", REJECT=${shouldReject}`);
+          return !shouldReject;
         });
         
         // Return ONLY filtered entries - remove raw conversationEntries to prevent ChatGPT reading them
@@ -1215,10 +1249,19 @@ class MIAWMCPServer {
             const sender = e.senderDisplayName || '';
             const role = e.sender?.role || '';
             const messageReason = e.entryPayload?.messageReason || '';
-            // ONLY accept specific valid roles - reject everything else
+            const messageText = e.entryPayload?.abstractMessage?.staticContent?.text || '';
+            
+            // Same strict filtering
+            const isSystemRole = role === 'System' || role === '' || !role;
+            const isAutomatedProcess = sender.includes('Automated Process');
+            const isAutomatedResponse = messageReason === 'AutomatedResponse';
+            const isSystemMessage = messageText.includes('One moment while I connect you') ||
+                                    messageText.includes('connect you to the next available') ||
+                                    messageText.includes('thanks for reaching out') ||
+                                    messageText.includes('We will be with you shortly');
             const isValidRole = role === 'Chatbot' || role === 'Agent' || role === 'EndUser';
-            const isNotAutomated = !sender.includes('Automated Process') && messageReason !== 'AutomatedResponse';
-            return isValidRole && isNotAutomated;
+            
+            return isValidRole && !isSystemRole && !isAutomatedProcess && !isAutomatedResponse && !isSystemMessage;
           })
           .sort((a: any, b: any) => (a.transcriptedTimestamp || 0) - (b.transcriptedTimestamp || 0))
           .map((e: any) => ({
