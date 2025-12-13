@@ -1103,14 +1103,21 @@ class MIAWMCPServer {
         // isLiveAgent is TRUE only when role is "Agent" (not Chatbot, not System)
         const isLiveAgent = senderRole === 'Agent';
         
-        // Filter entries to ONLY include Bot/Agent messages - exclude Automated Process and System
+        // Filter entries to ONLY include valid messages - ONLY Chatbot/Agent/EndUser roles allowed
         const rawEntries = entriesResult.conversationEntries || entriesResult.entries || [];
         const filteredEntries = rawEntries.filter((e: any) => {
           if (e.entryType !== 'Message') return false; // ONLY keep Message entries for ChatGPT
           const sender = e.senderDisplayName || '';
-          const role = e.sender?.role || e.senderRole || '';
-          // Exclude Automated Process AND System roles
-          return !sender.includes('Automated Process') && role !== 'System';
+          const role = e.sender?.role || '';
+          const messageReason = e.entryPayload?.messageReason || e.messageReason || '';
+          
+          // ONLY accept specific valid roles - reject everything else
+          const isValidRole = role === 'Chatbot' || role === 'Agent' || role === 'EndUser';
+          // Also reject Automated Process by name and AutomatedResponse messages
+          const isNotAutomated = !sender.includes('Automated Process') && messageReason !== 'AutomatedResponse';
+          
+          console.error(`Filter check: sender="${sender}", role="${role}", messageReason="${messageReason}", valid=${isValidRole && isNotAutomated}`);
+          return isValidRole && isNotAutomated;
         });
         
         // Return ONLY filtered entries - remove raw conversationEntries to prevent ChatGPT reading them
@@ -1192,9 +1199,12 @@ class MIAWMCPServer {
           .filter((e: any) => e.entryType === 'Message')
           .filter((e: any) => {
             const sender = e.senderDisplayName || '';
-            const role = e.sender?.role || e.senderRole || '';
-            // Exclude Automated Process AND System roles
-            return !sender.includes('Automated Process') && role !== 'System';
+            const role = e.sender?.role || '';
+            const messageReason = e.entryPayload?.messageReason || '';
+            // ONLY accept specific valid roles - reject everything else
+            const isValidRole = role === 'Chatbot' || role === 'Agent' || role === 'EndUser';
+            const isNotAutomated = !sender.includes('Automated Process') && messageReason !== 'AutomatedResponse';
+            return isValidRole && isNotAutomated;
           })
           .sort((a: any, b: any) => (a.transcriptedTimestamp || 0) - (b.transcriptedTimestamp || 0))
           .map((e: any) => ({

@@ -506,9 +506,10 @@
           .filter(e => {
             const sender = e.senderDisplayName || '';
             const role = e.sender?.role || '';
+            const messageReason = e.entryPayload?.messageReason || e.messageReason || '';
             // Only accept Chatbot, Agent, EndUser - reject System and Automated Process
             const isValidRole = role === 'Chatbot' || role === 'Agent' || role === 'EndUser';
-            const isNotAutomated = !sender.includes('Automated Process');
+            const isNotAutomated = !sender.includes('Automated Process') && messageReason !== 'AutomatedResponse';
             return isValidRole && isNotAutomated;
           })
           .sort((a, b) => (a.transcriptedTimestamp || 0) - (b.transcriptedTimestamp || 0));
@@ -563,9 +564,10 @@
           .filter(e => {
             const sender = e.senderDisplayName || '';
             const role = e.sender?.role || '';
+            const messageReason = e.entryPayload?.messageReason || e.messageReason || '';
             // Only accept Chatbot, Agent, EndUser - reject System and Automated Process
             const isValidRole = role === 'Chatbot' || role === 'Agent' || role === 'EndUser';
-            const isNotAutomated = !sender.includes('Automated Process');
+            const isNotAutomated = !sender.includes('Automated Process') && messageReason !== 'AutomatedResponse';
             return isValidRole && isNotAutomated;
           })
           .sort((a, b) => (a.transcriptedTimestamp || 0) - (b.transcriptedTimestamp || 0));
