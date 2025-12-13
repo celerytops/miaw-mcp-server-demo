@@ -54,22 +54,44 @@
       flex-shrink: 0;
     }
     
-    .salesforce-logo {
+    .agent-avatar {
       width: 36px;
       height: 36px;
       background: white;
-      border-radius: 8px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 700;
       color: #0070d2;
-      font-size: 18px;
+      font-size: 14px;
       flex-shrink: 0;
     }
     
     .header-info {
       flex: 1;
+    }
+    
+    .end-chat-button {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .end-chat-button:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .end-chat-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
     
     .header-title {
@@ -240,55 +262,6 @@
       text-align: right;
     }
     
-    .typing-indicator {
-      display: none;
-      padding: 12px 16px;
-      background: white;
-      border-radius: 16px;
-      width: fit-content;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    
-    body.dark-mode .typing-indicator {
-      background: #2a2a2a;
-    }
-    
-    .typing-indicator.active {
-      display: block;
-    }
-    
-    .typing-dots {
-      display: flex;
-      gap: 4px;
-    }
-    
-    .typing-dot {
-      width: 8px;
-      height: 8px;
-      background: #999;
-      border-radius: 50%;
-      animation: typing 1.4s infinite;
-    }
-    
-    .typing-dot:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-    
-    .typing-dot:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-    
-    @keyframes typing {
-      0%, 60%, 100% {
-        transform: translateY(0);
-        opacity: 0.4;
-      }
-      30% {
-        transform: translateY(-8px);
-        opacity: 1;
-      }
-    }
-    
     .chat-input-container {
       padding: 16px 20px;
       background: white;
@@ -385,7 +358,7 @@
 <body>
   <div class="chat-container">
     <div class="chat-header">
-      <div class="salesforce-logo">SF</div>
+      <div class="agent-avatar" id="agent-avatar">--</div>
       <div class="header-info">
         <div class="header-title" id="agent-name">Loading...</div>
         <div class="header-status">
@@ -393,6 +366,7 @@
           <span id="status-text">Connecting...</span>
         </div>
       </div>
+      <button class="end-chat-button" id="end-chat-button" onclick="endChat()" disabled>End Chat</button>
     </div>
     
     <div class="chat-messages" id="messages-container">
@@ -463,6 +437,10 @@
       // Set agent name in header
       document.getElementById('agent-name').textContent = agentName;
       
+      // Set agent initials in avatar
+      const initials = getInitials(agentName);
+      document.getElementById('agent-avatar').textContent = initials;
+      
       if (!sessionId || !conversationId) {
         console.error('Failed to get session data after retries');
         showError('Failed to connect. Please try again.');
@@ -480,17 +458,76 @@
       container.innerHTML = `<div class="error-message">${message}</div>`;
     }
     
+    function getInitials(name) {
+      if (!name || name === 'Salesforce Agent') return 'SA';
+      const parts = name.trim().split(/\s+/);
+      if (parts.length === 1) {
+        return parts[0].substring(0, 2).toUpperCase();
+      }
+      return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    }
+    
     function setConnected() {
       const indicator = document.getElementById('status-indicator');
       const statusText = document.getElementById('status-text');
       indicator.classList.remove('loading');
       statusText.textContent = 'Connected';
       
-      // Enable input
+      // Enable input and end chat button
       document.getElementById('message-input').disabled = false;
       document.getElementById('send-button').disabled = false;
+      document.getElementById('end-chat-button').disabled = false;
       
       isInitialized = true;
+    }
+    
+    async function endChat() {
+      if (!sessionId) return;
+      
+      const endButton = document.getElementById('end-chat-button');
+      endButton.disabled = true;
+      endButton.textContent = 'Ending...';
+      
+      try {
+        // Stop polling
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+        
+        // Call end session API
+        const response = await fetch(`${serverUrl}/api/end-session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId })
+        });
+        
+        // Update UI
+        document.getElementById('status-indicator').style.background = '#999';
+        document.getElementById('status-text').textContent = 'Chat ended';
+        document.getElementById('message-input').disabled = true;
+        document.getElementById('send-button').disabled = true;
+        endButton.textContent = 'Ended';
+        
+        // Add system message
+        const container = document.getElementById('messages-container');
+        const msgEl = document.createElement('div');
+        msgEl.className = 'message agent';
+        msgEl.innerHTML = `
+          <div class="message-content" style="max-width: 100%; text-align: center;">
+            <div class="message-bubble" style="background: #f0f0f0; color: #666;">
+              Chat session ended. Thank you for contacting us.
+            </div>
+          </div>
+        `;
+        container.appendChild(msgEl);
+        container.scrollTop = container.scrollHeight;
+        
+      } catch (error) {
+        console.error('Error ending chat:', error);
+        endButton.disabled = false;
+        endButton.textContent = 'End Chat';
+      }
     }
     
     async function loadMessages() {
@@ -605,9 +642,7 @@
           }
         });
         
-        if (hasNew) {
-          hideTypingIndicator();
-        }
+        // New messages received
         
       } catch (error) {
         console.error('Error polling messages:', error);
@@ -692,9 +727,6 @@
       // Clear input
       input.value = '';
       
-      // Show typing indicator
-      showTypingIndicator();
-      
       try {
         const response = await fetch(`${serverUrl}/api/send-message`, {
           method: 'POST',
@@ -717,7 +749,6 @@
         
       } catch (error) {
         console.error('Error sending message:', error);
-        hideTypingIndicator();
         
         // Show error in chat
         const errorEl = document.createElement('div');
@@ -730,41 +761,6 @@
         input.disabled = false;
         sendButton.disabled = false;
         input.focus();
-      }
-    }
-    
-    function showTypingIndicator() {
-      const container = document.getElementById('messages-container');
-      let indicator = document.getElementById('typing-indicator');
-      
-      if (!indicator) {
-        indicator = document.createElement('div');
-        indicator.id = 'typing-indicator';
-        indicator.className = 'message agent';
-        indicator.innerHTML = `
-          <div class="message-avatar">${agentName.charAt(0).toUpperCase()}</div>
-          <div class="message-content">
-            <div class="typing-indicator active">
-              <div class="typing-dots">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-              </div>
-            </div>
-          </div>
-        `;
-        container.appendChild(indicator);
-      } else {
-        indicator.style.display = 'flex';
-      }
-      
-      container.scrollTop = container.scrollHeight;
-    }
-    
-    function hideTypingIndicator() {
-      const indicator = document.getElementById('typing-indicator');
-      if (indicator) {
-        indicator.remove();
       }
     }
     
