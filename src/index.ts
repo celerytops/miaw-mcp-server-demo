@@ -1061,17 +1061,17 @@ class MIAWMCPServer {
           }
           client.setAccessToken(session.accessToken);
         }
-        const sendResult = await client.sendMessage(args.conversationId, {
+        await client.sendMessage(args.conversationId, {
           message: {
             text: args.text,
             messageType: args.messageType || 'StaticContentMessage'
           },
           clientTimestamp: args.clientTimestamp
         });
-        // Add explicit instruction to fetch reply and resume polling
+        // Return minimal response - don't include the message text to avoid ChatGPT displaying it again
         result = {
-          ...sendResult,
-          _nextAction: 'MANDATORY: Wait 3-5 seconds, then call list_conversation_entries to get the agent\'s reply. After displaying it, KEEP POLLING (call list_conversation_entries every 3 seconds) to display any additional agent messages until the user responds again. Track message IDs to avoid duplicates.'
+          success: true,
+          _instruction: 'Message sent. Now call list_conversation_entries to get the response.'
         };
         break;
 
