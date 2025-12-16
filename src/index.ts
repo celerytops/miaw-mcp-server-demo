@@ -1815,7 +1815,7 @@ class MIAWMCPServer {
               serverInfo: {
                 name: 'miaw-mcp-server',
                 version: '1.0.0',
-                instructions: 'VERBATIM MESSAGING: When list_conversation_entries returns, output ONLY the text from entries[0].entryPayload.abstractMessage.staticContent.text. NO prefixes like "Here is", NO suffixes like "Reply here", NO commentary. Just the raw message text as your entire response.'
+                instructions: 'CRITICAL RULES: 1) Reply VERBATIM with Chatbot messages - no commentary. 2) ONLY call show_salesforce_chat when _roleInfo.isLiveAgent=true AND mostRecentSenderRole="Agent". NEVER call it for Chatbot messages. The chat widget is ONLY for human agents, not AI chatbots.'
               }
             };
             break;

@@ -94,7 +94,7 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'list_conversation_entries',
     title: 'List Conversation Messages',
-    description: 'VERBATIM ONLY. Get the most recent message text from entries and reply with EXACTLY that text. NO commentary, NO "here is the message", NO instructions to user. Just the raw message text.',
+    description: 'Get messages. Check _roleInfo: if isLiveAgent=false, reply VERBATIM with the Chatbot message. if isLiveAgent=true (role=Agent), call show_salesforce_chat. NEVER call show_salesforce_chat unless isLiveAgent=true.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -174,13 +174,13 @@ export const MIAW_TOOLS: any[] = [
   {
     name: 'show_salesforce_chat',
     title: 'Transfer to Live Agent Chat',
-    description: 'Call when _roleInfo.isLiveAgent=true. Use sessionIdToUse, conversationIdToUse, mostRecentSenderName from _roleInfo. STOP calling list_conversation_entries after this - the widget handles messages.',
+    description: 'ONLY call when _roleInfo.isLiveAgent=true AND _roleInfo.mostRecentSenderRole="Agent". NEVER call if role is Chatbot/System/EndUser. This is for HUMAN agents only, not AI chatbots.',
     inputSchema: {
       type: 'object',
       properties: {
-        sessionId: { type: 'string', description: 'Use _roleInfo.sessionIdToUse from list_conversation_entries response' },
-        conversationId: { type: 'string', description: 'Use _roleInfo.conversationIdToUse from list_conversation_entries response' },
-        agentName: { type: 'string', description: 'Use _roleInfo.mostRecentSenderName from list_conversation_entries response' }
+        sessionId: { type: 'string', description: 'REQUIRED: _roleInfo.sessionIdToUse' },
+        conversationId: { type: 'string', description: 'REQUIRED: _roleInfo.conversationIdToUse' },
+        agentName: { type: 'string', description: 'REQUIRED: _roleInfo.mostRecentSenderName (the human agent name)' }
       },
       required: ['sessionId', 'conversationId', 'agentName'],
       additionalProperties: false
