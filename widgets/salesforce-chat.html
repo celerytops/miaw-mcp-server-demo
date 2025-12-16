@@ -535,17 +535,11 @@
       document.getElementById('end-chat-button').textContent = 'Ended';
       document.getElementById('end-chat-button').disabled = true;
       
-      // Add system message
+      // Add end chat message (centered, no bubble)
       const container = document.getElementById('messages-container');
       const msgEl = document.createElement('div');
-      msgEl.className = 'message agent';
-      msgEl.innerHTML = `
-        <div class="message-content" style="max-width: 100%; text-align: center;">
-          <div class="message-bubble" style="background: #f0f0f0; color: #666;">
-            ${escapeHtml(message)}
-          </div>
-        </div>
-      `;
+      msgEl.style.cssText = 'text-align: center; padding: 20px 16px; color: #666; font-size: 14px;';
+      msgEl.textContent = message;
       container.appendChild(msgEl);
       container.scrollTop = container.scrollHeight;
     }
