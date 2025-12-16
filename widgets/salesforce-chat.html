@@ -566,19 +566,31 @@
           loadingContainer.style.display = 'none';
         }
         
-        // Filter and sort messages
-        const messages = entries
+        // Sort all messages by timestamp
+        const allMessages = entries
           .filter(e => e.entryType === 'Message')
-          .filter(e => {
-            const sender = e.senderDisplayName || '';
-            const role = e.sender?.role || '';
-            const messageReason = e.entryPayload?.messageReason || e.messageReason || '';
-            // Only accept Chatbot, Agent, EndUser - reject System and Automated Process
-            const isValidRole = role === 'Chatbot' || role === 'Agent' || role === 'EndUser';
-            const isNotAutomated = !sender.includes('Automated Process') && messageReason !== 'AutomatedResponse';
-            return isValidRole && isNotAutomated;
-          })
           .sort((a, b) => (a.transcriptedTimestamp || 0) - (b.transcriptedTimestamp || 0));
+        
+        // Find the first Agent message (when live agent joined)
+        const firstAgentIndex = allMessages.findIndex(e => e.sender?.role === 'Agent');
+        
+        // Only show messages from when the Agent joined (skip Chatbot history)
+        const messagesFromAgentJoin = firstAgentIndex >= 0 
+          ? allMessages.slice(firstAgentIndex)
+          : allMessages;
+        
+        // Filter to only Agent and EndUser messages (no Chatbot, no System)
+        const messages = messagesFromAgentJoin.filter(e => {
+          const sender = e.senderDisplayName || '';
+          const role = e.sender?.role || '';
+          const messageReason = e.entryPayload?.messageReason || e.messageReason || '';
+          // Only accept Agent or EndUser - reject Chatbot, System, Automated Process
+          const isAgentOrUser = role === 'Agent' || role === 'EndUser';
+          const isNotAutomated = !sender.includes('Automated Process') && messageReason !== 'AutomatedResponse';
+          return isAgentOrUser && isNotAutomated;
+        });
+        
+        console.log(`Showing ${messages.length} messages (from agent join at index ${firstAgentIndex})`);
         
         // Render new messages
         messages.forEach(msg => {
@@ -670,17 +682,17 @@
           return;
         }
         
-        // Filter and sort messages
+        // Filter to only Agent and EndUser messages (no Chatbot - that was before transfer)
         const messages = entries
           .filter(e => e.entryType === 'Message')
           .filter(e => {
             const sender = e.senderDisplayName || '';
             const role = e.sender?.role || '';
             const messageReason = e.entryPayload?.messageReason || e.messageReason || '';
-            // Only accept Chatbot, Agent, EndUser - reject System and Automated Process
-            const isValidRole = role === 'Chatbot' || role === 'Agent' || role === 'EndUser';
+            // Only accept Agent or EndUser - reject Chatbot, System, Automated Process
+            const isAgentOrUser = role === 'Agent' || role === 'EndUser';
             const isNotAutomated = !sender.includes('Automated Process') && messageReason !== 'AutomatedResponse';
-            return isValidRole && isNotAutomated;
+            return isAgentOrUser && isNotAutomated;
           })
           .sort((a, b) => (a.transcriptedTimestamp || 0) - (b.transcriptedTimestamp || 0));
         
