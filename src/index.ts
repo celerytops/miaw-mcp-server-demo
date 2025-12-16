@@ -351,14 +351,15 @@ class MIAWClient {
 
   /**
    * Close a conversation
-   * Per Salesforce MIAW API: DELETE /conversations/{conversationId}
+   * Per Salesforce MIAW API: DELETE /conversation/{conversationId}?esDeveloperName={esDeveloperName}
    * https://developer.salesforce.com/docs/service/messaging-api/references/miaw-api-reference?meta=closeConversation
    */
   async closeConversation(conversationId: string): Promise<void> {
     console.error(`Closing conversation: ${conversationId}`);
-    console.error(`DELETE URL: ${this.axiosInstance.defaults.baseURL}/conversations/${conversationId}`);
+    const url = `/conversation/${conversationId}?esDeveloperName=${this.config.esDeveloperName}`;
+    console.error(`DELETE URL: ${this.axiosInstance.defaults.baseURL}${url}`);
     try {
-      await this.axiosInstance.delete(`/conversations/${conversationId}`);
+      await this.axiosInstance.delete(url);
       console.error('Conversation closed successfully');
     } catch (error: any) {
       console.error('Error closing conversation:', error.response?.status, error.response?.data || error.message);
@@ -379,13 +380,16 @@ class MIAWClient {
   }
 
   /**
-   * End messaging session
+   * End messaging session within a conversation
+   * Per Salesforce MIAW API: DELETE /conversation/{conversationId}/session?esDeveloperName={esDeveloperName}
+   * https://developer.salesforce.com/docs/service/messaging-api/references/miaw-api-reference?meta=endMessagingSession
    */
-  async endMessagingSession(): Promise<void> {
-    console.error('Ending messaging session...');
-    console.error(`DELETE URL: ${this.axiosInstance.defaults.baseURL}/messaging-session`);
+  async endMessagingSession(conversationId: string): Promise<void> {
+    console.error(`Ending messaging session for conversation: ${conversationId}`);
+    const url = `/conversation/${conversationId}/session?esDeveloperName=${this.config.esDeveloperName}`;
+    console.error(`DELETE URL: ${this.axiosInstance.defaults.baseURL}${url}`);
     try {
-      await this.axiosInstance.delete('/messaging-session');
+      await this.axiosInstance.delete(url);
       console.error('Messaging session ended successfully');
     } catch (error: any) {
       console.error('Error ending messaging session:', error.response?.status, error.response?.data || error.message);
@@ -395,78 +399,49 @@ class MIAWClient {
 
   /**
    * Close conversation and end session
-   * Tries multiple approaches for MIAW API
+   * Per Salesforce MIAW API docs:
+   * 1. endMessagingSession: DELETE /conversation/{conversationId}/session?esDeveloperName={name}
+   * 2. closeConversation: DELETE /conversation/{conversationId}?esDeveloperName={name}
    */
   async closeConversationAndSession(conversationId: string): Promise<void> {
     console.error(`Closing conversation and session for: ${conversationId}`);
+    console.error(`Using esDeveloperName: ${this.config.esDeveloperName}`);
     
-    // Method 1: Send a ParticipantChanged entry to indicate user left
-    // This is how MIAW tracks participant changes
+    // Step 1: End the messaging session first
+    // Per docs: "Ends a messaging session within a conversation between an end user and a rep"
     try {
-      console.error('Method 1: POST ParticipantChanged entry (user left)...');
-      const response = await this.axiosInstance.post(`/conversations/${conversationId}/entries`, {
-        entryType: 'ParticipantChanged',
-        entryPayload: {
-          entries: [{
-            participantChangeType: 'Left',
-            displayName: 'Guest',
-            role: 'EndUser'
-          }]
-        }
-      });
-      console.error('ParticipantChanged entry succeeded!', response.status);
-      return;
-    } catch (error: any) {
-      console.error('ParticipantChanged entry failed:', error.response?.status, error.response?.data || error.message);
-    }
-    
-    // Method 2: Send a RoutingResult entry with EndConversation
-    try {
-      console.error('Method 2: POST RoutingResult entry (EndConversation)...');
-      const response = await this.axiosInstance.post(`/conversations/${conversationId}/entries`, {
-        entryType: 'RoutingResult',
-        entryPayload: {
-          routingType: 'EndConversation'
-        }
-      });
-      console.error('RoutingResult entry succeeded!', response.status);
-      return;
-    } catch (error: any) {
-      console.error('RoutingResult entry failed:', error.response?.status, error.response?.data || error.message);
-    }
-    
-    // Method 3: Send a system message indicating chat ended
-    try {
-      console.error('Method 3: Send system message (chat ended)...');
-      await this.sendMessage(conversationId, {
-        message: {
-          messageType: 'StaticContentMessage',
-          text: '[Chat ended by user]'
-        }
-      });
-      console.error('System message sent!');
-    } catch (error: any) {
-      console.error('System message failed:', error.response?.status, error.response?.data || error.message);
-    }
-    
-    // Method 4: Try DELETE endpoints anyway (might work in some configurations)
-    try {
-      console.error('Method 4: DELETE /messaging-session...');
-      await this.endMessagingSession();
+      console.error('Step 1: DELETE /conversation/{id}/session (endMessagingSession)...');
+      await this.endMessagingSession(conversationId);
       console.error('endMessagingSession succeeded!');
     } catch (error: any) {
-      console.error('endMessagingSession failed:', error.response?.status);
+      console.error('endMessagingSession failed:', error.response?.status, error.response?.data || error.message);
     }
     
+    // Step 2: Close the conversation
+    // Per docs: "After a conversation is closed, end users and reps can no longer send messages"
     try {
-      console.error('Method 5: DELETE /conversations/{id}...');
+      console.error('Step 2: DELETE /conversation/{id} (closeConversation)...');
       await this.closeConversation(conversationId);
       console.error('closeConversation succeeded!');
     } catch (error: any) {
-      console.error('closeConversation failed:', error.response?.status);
+      console.error('closeConversation failed:', error.response?.status, error.response?.data || error.message);
     }
     
-    console.error('All close methods attempted');
+    // Step 3: Also send a message so the agent knows (fallback)
+    try {
+      console.error('Step 3: Send notification message...');
+      await this.sendMessage(conversationId, {
+        message: {
+          messageType: 'StaticContentMessage',
+          text: '[User has ended the chat]'
+        }
+      });
+      console.error('Notification message sent!');
+    } catch (error: any) {
+      console.error('Notification message failed (conversation may already be closed):', error.response?.status);
+    }
+    
+    console.error('Close operations completed');
   }
 
   /**
@@ -1443,7 +1418,10 @@ class MIAWMCPServer {
         break;
 
       case 'end_messaging_session':
-        await client.endMessagingSession();
+        if (!args.conversationId) {
+          throw new Error('conversationId is required for end_messaging_session');
+        }
+        await client.endMessagingSession(args.conversationId);
         result = { success: true, message: 'Messaging session ended' };
         break;
 
