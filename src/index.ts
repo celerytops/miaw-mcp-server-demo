@@ -1054,6 +1054,12 @@ class MIAWMCPServer {
         break;
 
       case 'send_message':
+        console.error(`=== SEND_MESSAGE CALLED ===`);
+        console.error(`Text: "${args.text?.substring(0, 50)}..."`);
+        console.error(`ConversationId: ${args.conversationId}`);
+        console.error(`SessionId: ${args.sessionId}`);
+        console.error(`Timestamp: ${Date.now()}`);
+        
         if (args.sessionId) {
           const session = sessions.get(args.sessionId);
           if (!session) {
@@ -1061,17 +1067,18 @@ class MIAWMCPServer {
           }
           client.setAccessToken(session.accessToken);
         }
-        await client.sendMessage(args.conversationId, {
+        const sendResult = await client.sendMessage(args.conversationId, {
           message: {
             text: args.text,
             messageType: args.messageType || 'StaticContentMessage'
           },
           clientTimestamp: args.clientTimestamp
         });
-        // Return minimal response - don't include the message text to avoid ChatGPT displaying it again
+        console.error(`=== SEND_MESSAGE COMPLETED ===`);
+        // Add explicit instruction to fetch reply and resume polling
         result = {
-          success: true,
-          _instruction: 'Message sent. Now call list_conversation_entries to get the response.'
+          ...sendResult,
+          _nextAction: 'MANDATORY: Wait 3-5 seconds, then call list_conversation_entries to get the agent\'s reply. After displaying it, KEEP POLLING (call list_conversation_entries every 3 seconds) to display any additional agent messages until the user responds again. Track message IDs to avoid duplicates.'
         };
         break;
 
