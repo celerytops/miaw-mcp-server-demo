@@ -632,7 +632,16 @@
         const entries = data.entries || [];
         const rawEntries = data._rawEntries || entries;
         
-        // Check for conversation end events (per Salesforce MIAW API)
+        // Check _roleInfo for conversation status (server-side detection)
+        if (data._roleInfo?.conversationEnded) {
+          const message = data._roleInfo?.endedByAgent 
+            ? 'The agent has ended this chat session. Thank you for contacting us.'
+            : 'The chat session has ended.';
+          showChatEnded(message);
+          return;
+        }
+        
+        // Check for conversation end events in raw entries
         const endEvents = rawEntries.filter(e => 
           e.entryType === 'ConversationClose' || 
           e.entryType === 'RoutingResult' && e.entryPayload?.routingType === 'EndConversation' ||
@@ -645,9 +654,19 @@
           return;
         }
         
-        // Check _roleInfo for conversation status
-        if (data._roleInfo?.conversationEnded) {
-          showChatEnded('The chat session has ended.');
+        // Check for "agent ended chat" message in raw entries
+        const agentEndedMsg = rawEntries.find(e => {
+          const text = e.entryPayload?.abstractMessage?.staticContent?.text || '';
+          const sender = e.senderDisplayName || '';
+          return sender.includes('Automated Process') && 
+                 (text.includes('agent has ended the chat') || 
+                  text.includes('chat has ended') ||
+                  text.includes('conversation has ended'));
+        });
+        
+        if (agentEndedMsg) {
+          console.log('Agent ended chat message detected:', agentEndedMsg);
+          showChatEnded('The agent has ended this chat session. Thank you for contacting us.');
           return;
         }
         

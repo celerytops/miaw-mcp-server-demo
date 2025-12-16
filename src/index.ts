@@ -1272,16 +1272,28 @@ class MIAWMCPServer {
           return !shouldReject;
         });
         
-        // Check for conversation close events
+        // Check for conversation close events - including "agent ended chat" message
         const closeEvents = allRawEntries.filter((e: any) => 
           e.entryType === 'ConversationClose' || 
           (e.entryType === 'RoutingResult' && e.entryPayload?.routingType === 'EndConversation') ||
           (e.entryType === 'ParticipantChanged' && e.entryPayload?.participantChangeType === 'Left')
         );
-        const conversationEnded = closeEvents.length > 0;
+        
+        // Also check for "agent ended chat" message from Automated Process
+        const agentEndedMessage = allRawEntries.find((e: any) => {
+          const text = e.entryPayload?.abstractMessage?.staticContent?.text || '';
+          const sender = e.senderDisplayName || '';
+          return sender.includes('Automated Process') && 
+                 (text.includes('agent has ended the chat') || 
+                  text.includes('chat has ended') ||
+                  text.includes('conversation has ended'));
+        });
+        
+        const conversationEnded = closeEvents.length > 0 || !!agentEndedMessage;
+        const endedByAgent = !!agentEndedMessage;
         
         if (conversationEnded) {
-          console.error('Conversation has been closed');
+          console.error('Conversation has been closed', endedByAgent ? '(by agent)' : '');
         }
         
         // Return filtered entries for ChatGPT, but include _rawEntries for widget
@@ -1294,11 +1306,12 @@ class MIAWMCPServer {
             mostRecentSenderName: senderDisplayName,
             isLiveAgent: isLiveAgent,
             conversationEnded: conversationEnded,
+            endedByAgent: endedByAgent,
             // Include sessionId/conversationId so ChatGPT can pass them to show_salesforce_chat
             sessionIdToUse: args.sessionId,
             conversationIdToUse: args.conversationId,
             instruction: conversationEnded
-              ? `The conversation has ended.`
+              ? `The conversation has ended${endedByAgent ? ' by the agent' : ''}.`
               : isLiveAgent 
                 ? `LIVE AGENT DETECTED! Call show_salesforce_chat NOW with: sessionId="${args.sessionId}", conversationId="${args.conversationId}", agentName="${senderDisplayName}". DO NOT display messages yourself - the chat widget will show them.`
                 : !foundValidMessage || senderRole === 'Unknown' 
