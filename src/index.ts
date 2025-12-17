@@ -40,6 +40,12 @@ const __dirname = path.dirname(__filename);
 const WIDGETS_DIR = path.resolve(__dirname, '..', 'widgets');
 console.error('Widget directory path:', WIDGETS_DIR);
 
+// Get BASE_URL from environment variable
+const BASE_URL = process.env.BASE_URL || 'https://nto-service-mcp-server-demo-7a31e4412169.herokuapp.com';
+const DOMAIN = BASE_URL.replace('https://', '');
+console.error('Using BASE_URL:', BASE_URL);
+console.error('Using DOMAIN:', DOMAIN);
+
 // Widget configuration for Salesforce Chat
 const salesforceChatWidget = {
   id: 'salesforce-chat',
@@ -81,15 +87,14 @@ function widgetDescriptorMeta(widget: typeof salesforceChatWidget) {
     // CSP - required for app submission
     'openai/widgetCSP': {
       connect_domains: [
-        'https://miaw-mcp-server-6df009bc852c.herokuapp.com',
+        BASE_URL,
         'https://*.salesforce.com'
       ],
       resource_domains: [
-        'https://miaw-mcp-server-6df009bc852c.herokuapp.com'
+        BASE_URL
       ]
     },
-    // Widget domain - required for app submission
-    'openai/widgetDomain': 'miaw-mcp-server-6df009bc852c.herokuapp.com',
+    'openai/widgetDomain': DOMAIN,
     // Widget description
     'openai/widgetDescription': 'Real-time chat interface for communicating with Salesforce live agents.'
   };
@@ -614,7 +619,7 @@ class MIAWMCPServer {
           ]
         };
       }
-      throw new Error(`Unknown resource: ${request.params.uri}`);
+   throw new Error(`Unknown resource: ${request.params.uri}`);  
     });
 
     // List resource templates
