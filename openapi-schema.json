@@ -1,22 +1,13 @@
 {
-  "openapi": "3.1.0",
+  "openapi": "3.0.0",
   "info": {
-    "title": "Salesforce",
+    "title": "Salesforce Support Agent",
     "description": "Connect with Salesforce agents for customer support",
-    "version": "1.0.0",
-    "contact": {
-      "name": "Salesforce Support",
-      "url":  "https://whispering-anchorage-76340-e59817a9e57c.herokuapp.com"
-    },
-    "x-legal": {
-      "name": "Privacy Policy",
-      "url": "https://whispering-anchorage-76340-e59817a9e57c.herokuapp.com/privacy-policy"
-    }
+    "version": "1.0.0"
   },
   "servers": [
     {
-      "url": "https://whispering-anchorage-76340-e59817a9e57c.herokuapp.com",
-      "description": "Salesforce"
+      "url": "https://whispering-anchorage-76340-e59817a9e57c.herokuapp.com"
     }
   ],
   "paths": {
@@ -73,10 +64,7 @@
               }
             }
           }
-        },
-        "x-openai-isConsequential": false,
-        "x-openai-invoking-message": "Talking to Salesforce",
-        "x-openai-invoked-message": "Salesforce responded"
+        }
       }
     },
     "/api/create-conversation": {
@@ -129,10 +117,7 @@
               }
             }
           }
-        },
-        "x-openai-isConsequential": false,
-        "x-openai-invoking-message": "Talking to Salesforce",
-        "x-openai-invoked-message": "Salesforce responded"
+        }
       }
     },
     "/api/send-message": {
@@ -188,17 +173,14 @@
               }
             }
           }
-        },
-        "x-openai-isConsequential": false,
-        "x-openai-invoking-message": "Talking to Salesforce",
-        "x-openai-invoked-message": "Salesforce responded"
+        }
       }
     },
     "/api/list-conversation-entries": {
       "post": {
         "operationId": "listConversationEntries",
         "summary": "List Conversation Messages",
-        "description": "Get messages. Reply with ONLY the message text - NOTHING MORE. Do NOT add 'X replied:' or commentary. WRONG: 'Selena replied: Hello' ❌ RIGHT: 'Hello' ✅ Exception: On transfer say 'Transferring to [name]' then greeting.",
+        "description": "Get messages from the conversation. Returns an array of message entries.",
         "requestBody": {
           "required": true,
           "content": {
@@ -237,17 +219,14 @@
                       "items": {
                         "type": "object"
                       },
-                      "description": "Messages from bots/agents. Extract ONLY the text from the most recent message. Reply with EXACTLY that text and NOTHING ELSE. No 'X said:', no extra words."
+                      "description": "Array of conversation messages"
                     }
                   }
                 }
               }
             }
           }
-        },
-        "x-openai-isConsequential": false,
-        "x-openai-invoking-message": "Talking to Salesforce",
-        "x-openai-invoked-message": "Salesforce responded"
+        }
       }
     },
     "/api/get-conversation-status": {
@@ -295,10 +274,7 @@
               }
             }
           }
-        },
-        "x-openai-isConsequential": false,
-        "x-openai-invoking-message": "Talking to Salesforce",
-        "x-openai-invoked-message": "Salesforce responded"
+        }
       }
     },
     "/api/close-conversation": {
@@ -343,10 +319,7 @@
               }
             }
           }
-        },
-        "x-openai-isConsequential": false,
-        "x-openai-invoking-message": "Talking to Salesforce",
-        "x-openai-invoked-message": "Salesforce responded"
+        }
       }
     }
   }
