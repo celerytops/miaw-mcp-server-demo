@@ -6,16 +6,16 @@
     "version": "1.0.0",
     "contact": {
       "name": "Salesforce Support",
-      "url": "https://miaw-mcp-server-6df009bc852c.herokuapp.com"
+      "url":  "https://whispering-anchorage-76340-e59817a9e57c.herokuapp.com"
     },
     "x-legal": {
       "name": "Privacy Policy",
-      "url": "https://miaw-mcp-server-6df009bc852c.herokuapp.com/privacy-policy"
+      "url": "https://whispering-anchorage-76340-e59817a9e57c.herokuapp.com/privacy-policy"
     }
   },
   "servers": [
     {
-      "url": "https://miaw-mcp-server-6df009bc852c.herokuapp.com",
+      "url": "https://whispering-anchorage-76340-e59817a9e57c.herokuapp.com",
       "description": "Salesforce"
     }
   ],
