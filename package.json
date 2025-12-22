@@ -14,7 +14,9 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:agentforce": "node dist/agentforce-index.js",
     "dev": "tsc && node dist/index.js",
+    "dev:agentforce": "tsc && node dist/agentforce-index.js",
     "prepare": "npm run build",
     "heroku-postbuild": "npm run build"
   },
