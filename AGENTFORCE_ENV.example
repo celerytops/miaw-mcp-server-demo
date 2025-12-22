@@ -1,0 +1,35 @@
+# Agentforce MCP Server Environment Variables
+
+# Required: Your Agentforce instance URL
+# Example: https://shopperagent-production.sfdc-8tgtt5-ecom1.exp-delivery.com
+# Or: https://your-instance.salesforce.com
+AGENTFORCE_SERVER_URL=
+
+# Required: Your Agentforce agent ID
+# Found in Agentforce settings or API configuration
+AGENTFORCE_AGENT_ID=
+
+# Required: OAuth2 Client ID from your Connected App
+# Found in Setup → App Manager → Your Connected App → API (Enable OAuth Settings)
+AGENTFORCE_CLIENT_ID=
+
+# Required: OAuth2 Client Secret from your Connected App
+# Found in Setup → App Manager → Your Connected App → API (Enable OAuth Settings)
+# Click "Manage" → "Edit Policies" → Copy Consumer Secret
+AGENTFORCE_CLIENT_SECRET=
+
+# Optional: Salesforce Org ID
+# Can help with some API calls
+AGENTFORCE_ORG_ID=
+
+# Required for deployment: Your Heroku app URL
+# Example: https://your-app-name.herokuapp.com
+BASE_URL=
+
+# Transport mode: 'stdio' for local development, 'http' for deployment
+# Default: stdio
+MCP_TRANSPORT=http
+
+# Port for HTTP mode (default: 3000)
+PORT=3000
+
