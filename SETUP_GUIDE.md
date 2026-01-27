@@ -93,11 +93,11 @@ This guide walks you through setting up the MIAW MCP Server for ChatGPT integrat
    - **MIAW_ES_DEVELOPER_NAME**: Your API Name from Step 3
    - **MIAW_ORG_ID**: Your Organization ID from Step 4
 
-3. Click **Deploy app**
+3. Click **Deploy app** [this is not a step? - you deploy branch, app is already created]
 
 4. Wait 2-3 minutes for deployment
 
-5. Click **View app** - you should see:
+5. Click **View app** - you should see: [can use open app > view message]
    ```json
    {
      "status": "ok",
