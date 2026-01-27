@@ -44,10 +44,10 @@ This guide walks you through setting up the MIAW MCP Server for ChatGPT integrat
 
 1. Go to **Setup** → Search for "Embedded Service Deployments"
 2. If you don't have one, click **New Deployment**
-3. Choose **Messaging for In-App and Web**
+3. Choose **Messaging for In-App and Web** [more info needed here]
 4. Complete the setup wizard:
    - Name your deployment (e.g., "ChatGPT Handoff")
-   - Configure your routing (queues, skills, etc.)
+   - Configure your routing (queues, skills, etc.) [more info needed here]
    - Set up agent availability
    - Customize messaging appearance (optional)
 
@@ -56,7 +56,7 @@ This guide walks you through setting up the MIAW MCP Server for ChatGPT integrat
 1. In **Setup** → **Embedded Service Deployments**
 2. Click on your deployment name
 3. Click **View** button next to the deployment
-4. Look for the code snippet - find the base URL
+4. Look for the code snippet - find the base URL [more info needed here]
 5. Copy the URL that looks like:
    ```
    https://scrt01.uengage1.sfdc-yfeipo.svc.sfdcfc.net
