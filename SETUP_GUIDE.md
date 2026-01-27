@@ -82,7 +82,7 @@ This guide walks you through setting up the MIAW MCP Server for ChatGPT integrat
 
 ## Deploy to Heroku
 
-### Option A: One-Click Deploy (Easiest)
+### Option A: One-Click Deploy (Easiest) ---- [how to connect this repo to Heroku?]
 
 1. Click this button:
    
