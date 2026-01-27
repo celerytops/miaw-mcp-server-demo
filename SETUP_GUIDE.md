@@ -88,7 +88,7 @@ This guide walks you through setting up the MIAW MCP Server for ChatGPT integrat
    
    [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
-2. Fill in the required environment variables:
+2. Fill in the required environment variables: (Settings tab > Config Vars)
    - **MIAW_SCRT_URL**: Your SCRT URL from Step 2
    - **MIAW_ES_DEVELOPER_NAME**: Your API Name from Step 3
    - **MIAW_ORG_ID**: Your Organization ID from Step 4
